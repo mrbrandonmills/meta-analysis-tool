@@ -7,7 +7,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.agents.base import AgentConfig, AgentOrchestrator
-from app.agents.specialized import CoordinatorAgent, SearchAgent, ScreeningAgent, QAAgent
+from app.agents.specialized import CoordinatorAgent, SearchAgent, ScreeningAgent, QAAgent, CredibilityAgent
 
 router = APIRouter()
 
@@ -23,6 +23,7 @@ class MetaAnalysisRequest(BaseModel):
     inclusion_criteria: List[str] = Field(default_factory=list)
     exclusion_criteria: List[str] = Field(default_factory=list)
     databases: List[str] = Field(default_factory=lambda: ["pubmed", "arxiv", "europepmc", "core"])
+    peer_review_only: bool = Field(default=False, description="Filter out preprints and non-peer-reviewed studies")
     expert_name: str | None = None
 
 
@@ -135,6 +136,18 @@ async def execute_meta_analysis(analysis_id: str):
         }
         screening_results = await screening_agent.process(screening_input)
 
+        # Initialize credibility agent
+        credibility_config = AgentConfig(name="CredibilityAgent", role="quality_assessment")  # type: ignore
+        credibility_agent = CredibilityAgent(credibility_config)
+        orchestrator.register_agent(credibility_agent)
+
+        # Evaluate credibility of included studies
+        credibility_input = {
+            "studies": screening_results["included"],
+            "require_peer_review": False,  # Will be configurable
+        }
+        credibility_results = await credibility_agent.process(credibility_input)
+
         return {
             "analysis_id": analysis_id,
             "status": "in_progress",
@@ -147,6 +160,11 @@ async def execute_meta_analysis(analysis_id: str):
                 "included": len(screening_results["included"]),
                 "excluded": len(screening_results["excluded"]),
                 "uncertain": len(screening_results["uncertain"]),
+            },
+            "credibility_results": {
+                "total_evaluated": credibility_results["total_evaluated"],
+                "breakdown": credibility_results["credibility_breakdown"],
+                "studies_with_scores": credibility_results["studies"],
             },
             "next_steps": [
                 "Full-text screening",
