@@ -22,7 +22,7 @@ class MetaAnalysisRequest(BaseModel):
     topic: str
     inclusion_criteria: List[str] = Field(default_factory=list)
     exclusion_criteria: List[str] = Field(default_factory=list)
-    databases: List[str] = Field(default_factory=lambda: ["pubmed"])
+    databases: List[str] = Field(default_factory=lambda: ["pubmed", "arxiv", "europepmc", "core"])
     expert_name: str | None = None
 
 

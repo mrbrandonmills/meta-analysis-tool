@@ -43,8 +43,13 @@ Your responsibilities:
 5. Remove duplicate entries
 6. Document search strategies for reproducibility
 
-You are familiar with:
-- PubMed/MEDLINE
+You are familiar with and have access to:
+- PubMed/MEDLINE (medical & life sciences)
+- arXiv (preprints: physics, math, CS, q-bio)
+- Europe PMC (European research + life sciences)
+- CORE (open access papers from global repositories)
+
+Planned for future integration:
 - PsycINFO
 - Web of Science
 - Scopus
@@ -112,6 +117,30 @@ Provide:
                 all_results.extend(results)
                 search_log.append({
                     "database": "PubMed",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "arxiv":
+                results = await self._search_arxiv(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "arXiv",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "europepmc":
+                results = await self._search_europepmc(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "Europe PMC",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "core":
+                results = await self._search_core(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "CORE",
                     "results_count": len(results),
                     "query": " AND ".join(search_terms),
                 })
@@ -245,3 +274,215 @@ Provide:
 
         logger.info(f"Deduplicated: {len(studies)} -> {len(unique)} studies")
         return unique
+
+    async def _search_arxiv(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search arXiv preprint repository.
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        # Construct query for arXiv API
+        query = " AND ".join(search_terms)
+
+        # arXiv API
+        base_url = "http://export.arxiv.org/api/query"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    base_url,
+                    params={
+                        "search_query": f"all:{query}",
+                        "start": 0,
+                        "max_results": 50,  # Limit for demo
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"arXiv search failed: {response.status_code}")
+                    return []
+
+                # Parse XML response (arXiv returns Atom feed)
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(response.content)
+
+                # Namespace for arXiv Atom feed
+                ns = {
+                    'atom': 'http://www.w3.org/2005/Atom',
+                    'arxiv': 'http://arxiv.org/schemas/atom'
+                }
+
+                results = []
+                entries = root.findall('atom:entry', ns)
+
+                logger.info(f"Found {len(entries)} results in arXiv")
+
+                for entry in entries:
+                    title_elem = entry.find('atom:title', ns)
+                    summary_elem = entry.find('atom:summary', ns)
+                    published_elem = entry.find('atom:published', ns)
+                    id_elem = entry.find('atom:id', ns)
+
+                    # Extract authors
+                    authors = []
+                    for author in entry.findall('atom:author', ns):
+                        name_elem = author.find('atom:name', ns)
+                        if name_elem is not None:
+                            authors.append(name_elem.text)
+
+                    # Extract arXiv ID
+                    arxiv_id = ""
+                    if id_elem is not None:
+                        arxiv_id = id_elem.text.split('/')[-1]
+
+                    results.append({
+                        "id": f"arXiv:{arxiv_id}",
+                        "title": title_elem.text.strip() if title_elem is not None else "",
+                        "authors": authors,
+                        "journal": "arXiv Preprint",
+                        "year": published_elem.text[:4] if published_elem is not None else "",
+                        "abstract": summary_elem.text.strip() if summary_elem is not None else "",
+                        "doi": "",
+                        "database": "arXiv",
+                        "url": id_elem.text if id_elem is not None else "",
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching arXiv: {e}")
+            return []
+
+    async def _search_europepmc(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search Europe PMC database.
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        # Construct query
+        query = " AND ".join([f'"{term}"' for term in search_terms])
+
+        # Europe PMC API
+        base_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    base_url,
+                    params={
+                        "query": query,
+                        "pageSize": 50,  # Limit for demo
+                        "format": "json",
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Europe PMC search failed: {response.status_code}")
+                    return []
+
+                data = response.json()
+                result_list = data.get("resultList", {}).get("result", [])
+
+                logger.info(f"Found {len(result_list)} results in Europe PMC")
+
+                results = []
+                for study in result_list:
+                    # Extract author list
+                    authors = []
+                    if "authorString" in study:
+                        authors = [a.strip() for a in study["authorString"].split(",")]
+
+                    results.append({
+                        "id": f"PMCID:{study.get('pmcid', study.get('id', ''))}",
+                        "title": study.get("title", ""),
+                        "authors": authors,
+                        "journal": study.get("journalTitle", ""),
+                        "year": str(study.get("pubYear", "")),
+                        "abstract": study.get("abstractText", ""),
+                        "doi": study.get("doi", ""),
+                        "database": "Europe PMC",
+                        "source": study.get("source", ""),
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching Europe PMC: {e}")
+            return []
+
+    async def _search_core(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search CORE (COnnecting REpositories) for open access papers.
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        # Construct query
+        query = " ".join(search_terms)
+
+        # CORE API v3 (search endpoint doesn't require API key)
+        base_url = "https://api.core.ac.uk/v3/search/works"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    base_url,
+                    json={
+                        "q": query,
+                        "limit": 50,  # Limit for demo
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"CORE search failed: {response.status_code}")
+                    return []
+
+                data = response.json()
+                results_list = data.get("results", [])
+
+                logger.info(f"Found {len(results_list)} results in CORE")
+
+                results = []
+                for study in results_list:
+                    # Extract authors
+                    authors = []
+                    if "authors" in study:
+                        authors = [a.get("name", "") for a in study["authors"] if "name" in a]
+
+                    results.append({
+                        "id": f"CORE:{study.get('id', '')}",
+                        "title": study.get("title", ""),
+                        "authors": authors,
+                        "journal": study.get("publisher", ""),
+                        "year": str(study.get("yearPublished", "")),
+                        "abstract": study.get("abstract", ""),
+                        "doi": study.get("doi", ""),
+                        "database": "CORE",
+                        "downloadUrl": study.get("downloadUrl", ""),
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching CORE: {e}")
+            return []
