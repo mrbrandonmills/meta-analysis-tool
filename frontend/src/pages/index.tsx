@@ -6,8 +6,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 export default function Home() {
   const [researchQuestion, setResearchQuestion] = useState('')
   const [topic, setTopic] = useState('')
+  const [peerReviewOnly, setPeerReviewOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [executionResult, setExecutionResult] = useState<any>(null)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<any>(null)
 
@@ -26,13 +28,57 @@ export default function Home() {
           'Non-English language',
           'Qualitative studies'
         ],
-        databases: ['pubmed']
+        databases: ['pubmed', 'arxiv', 'europepmc', 'core'],
+        peer_review_only: peerReviewOnly
       })
       setResult(response.data)
     } catch (error) {
       console.error('Error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const executeMetaAnalysis = async () => {
+    if (!result?.id) return
+    setLoading(true)
+    try {
+      const response = await axios.post(`${API_URL}/api/v1/meta-analysis/execute/${result.id}`)
+      setExecutionResult(response.data)
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getCredibilityColor = (level: string) => {
+    switch (level?.toUpperCase()) {
+      case 'HIGH':
+        return 'bg-green-100 border-green-300 text-green-900'
+      case 'MEDIUM':
+        return 'bg-yellow-100 border-yellow-300 text-yellow-900'
+      case 'LOW':
+        return 'bg-orange-100 border-orange-300 text-orange-900'
+      case 'VERY_LOW':
+        return 'bg-red-100 border-red-300 text-red-900'
+      default:
+        return 'bg-gray-100 border-gray-300 text-gray-900'
+    }
+  }
+
+  const getCredibilityDot = (level: string) => {
+    switch (level?.toUpperCase()) {
+      case 'HIGH':
+        return '🟢'
+      case 'MEDIUM':
+        return '🟡'
+      case 'LOW':
+        return '🟠'
+      case 'VERY_LOW':
+        return '🔴'
+      default:
+        return '⚪'
     }
   }
 
@@ -92,6 +138,19 @@ export default function Home() {
               />
             </div>
 
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="peerReviewOnly"
+                checked={peerReviewOnly}
+                onChange={(e) => setPeerReviewOnly(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="peerReviewOnly" className="text-sm text-gray-700">
+                Peer-reviewed studies only (exclude preprints)
+              </label>
+            </div>
+
             <button
               onClick={createMetaAnalysis}
               disabled={loading || !researchQuestion || !topic}
@@ -103,16 +162,133 @@ export default function Home() {
 
           {result && (
             <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-              <h3 className="font-semibold text-green-900 mb-2">Success!</h3>
+              <h3 className="font-semibold text-green-900 mb-2">Workflow Created!</h3>
               <p className="text-sm text-green-800">
                 Analysis ID: {result.id}
               </p>
-              <p className="text-sm text-green-800">
+              <p className="text-sm text-green-800 mb-4">
                 Status: {result.status}
               </p>
+              <button
+                onClick={executeMetaAnalysis}
+                disabled={loading}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Executing...' : 'Execute Meta-Analysis'}
+              </button>
             </div>
           )}
         </div>
+
+        {executionResult && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-2xl font-semibold mb-4">Analysis Results</h2>
+
+            {/* Search Results */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">Search Results</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-600 font-medium">Total Found</p>
+                  <p className="text-2xl font-bold text-blue-900">{executionResult.search_results?.total_found || 0}</p>
+                </div>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-600 font-medium">Databases</p>
+                  <p className="text-sm text-blue-900">{executionResult.search_results?.databases?.join(', ') || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Screening Results */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">Screening Results</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-600 font-medium">Included</p>
+                  <p className="text-2xl font-bold text-green-900">{executionResult.screening_results?.included || 0}</p>
+                </div>
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600 font-medium">Excluded</p>
+                  <p className="text-2xl font-bold text-red-900">{executionResult.screening_results?.excluded || 0}</p>
+                </div>
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm text-yellow-600 font-medium">Uncertain</p>
+                  <p className="text-2xl font-bold text-yellow-900">{executionResult.screening_results?.uncertain || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Credibility Breakdown */}
+            {executionResult.credibility_results && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2">📊 Credibility Breakdown</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-600 font-medium">🟢 High</p>
+                    <p className="text-2xl font-bold text-green-900">{executionResult.credibility_results.breakdown?.high || 0}</p>
+                  </div>
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-600 font-medium">🟡 Medium</p>
+                    <p className="text-2xl font-bold text-yellow-900">{executionResult.credibility_results.breakdown?.medium || 0}</p>
+                  </div>
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                    <p className="text-sm text-orange-600 font-medium">🟠 Low</p>
+                    <p className="text-2xl font-bold text-orange-900">{executionResult.credibility_results.breakdown?.low || 0}</p>
+                  </div>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600 font-medium">🔴 Very Low</p>
+                    <p className="text-2xl font-bold text-red-900">{executionResult.credibility_results.breakdown?.very_low || 0}</p>
+                  </div>
+                </div>
+
+                {/* Individual Studies with Credibility */}
+                {executionResult.credibility_results.studies_with_scores && executionResult.credibility_results.studies_with_scores.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-3">Studies with Credibility Scores</h4>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {executionResult.credibility_results.studies_with_scores.slice(0, 10).map((study: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className={`p-4 border-2 rounded-md ${getCredibilityColor(study.credibility?.level)}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="text-2xl">{getCredibilityDot(study.credibility?.level)}</span>
+                                <span className="font-semibold text-sm uppercase">{study.credibility?.level} CREDIBILITY</span>
+                                <span className="text-sm font-bold">Score: {study.credibility?.score}/100</span>
+                              </div>
+                              <h5 className="font-semibold mb-1">{study.title}</h5>
+                              <p className="text-xs mb-2">
+                                {study.authors} | {study.journal} ({study.year})
+                              </p>
+                              {study.credibility?.reasoning && (
+                                <p className="text-xs mb-2">{study.credibility.reasoning}</p>
+                              )}
+                              <div className="flex items-center space-x-4 text-xs">
+                                {study.credibility?.is_peer_reviewed && (
+                                  <span className="bg-white bg-opacity-50 px-2 py-1 rounded">✅ Peer-Reviewed</span>
+                                )}
+                                {study.credibility?.is_preprint && (
+                                  <span className="bg-white bg-opacity-50 px-2 py-1 rounded">📄 Preprint</span>
+                                )}
+                                {study.credibility?.replicability && (
+                                  <span className="bg-white bg-opacity-50 px-2 py-1 rounded">
+                                    Replicability: {study.credibility.replicability}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-2xl font-semibold mb-4">Ask Questions</h2>
