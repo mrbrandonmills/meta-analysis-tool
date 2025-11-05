@@ -1,1 +1,1 @@
-web: /app/start.sh
+web: /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --app-dir /app
