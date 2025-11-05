@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements (use production requirements for faster builds)
-COPY requirements.production.txt ./requirements.txt
+# Copy requirements
+COPY requirements.txt ./requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -20,13 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application
 COPY app ./app
 
-# Copy startup script
-COPY start.sh ./start.sh
-RUN chmod +x start.sh
-
 # Expose port
 EXPOSE 8000
 
 # Run the application
-# Use shell form to allow $PORT environment variable expansion
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
