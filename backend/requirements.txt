@@ -46,11 +46,21 @@ aiofiles==23.2.1
 # langchain-anthropic==0.1.4
 # langgraph==0.0.25
 
-# NOTE: Heavy dependencies removed for faster builds:
+# Statistical & Scientific Computing (REQUIRED for meta-analysis)
+# These are CRITICAL for Tool 1 - cannot perform meta-analysis without them
+numpy==1.26.2
+scipy==1.11.4
+pandas==2.1.4
+statsmodels==0.14.1
+scikit-learn==1.4.0
+
+# Visualization (REQUIRED for forest plots and figures)
+matplotlib==3.8.2
+seaborn==0.13.1
+
+# NOTE: Other heavy dependencies removed for faster builds:
 # - chromadb (vector database - not used in MVP)
 # - sentence-transformers (ML models - not used in MVP)
-# - scipy, statsmodels, numpy, pandas (statistical analysis - future feature)
-# - matplotlib, seaborn (visualization - future feature)
 # - spacy, nltk (NLP - not critical for MVP)
 # - pymupdf, pdfplumber, pypdf (PDF processing - future feature)
-# - pytest, black, flake8, mypy (development only)
+# - pytest, black, flake8, mypy (development only - use requirements-test.txt)

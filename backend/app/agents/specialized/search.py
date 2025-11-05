@@ -290,11 +290,11 @@ Provide:
         # Construct query for arXiv API
         query = " AND ".join(search_terms)
 
-        # arXiv API
-        base_url = "http://export.arxiv.org/api/query"
+        # arXiv API (use HTTPS to avoid redirects)
+        base_url = "https://export.arxiv.org/api/query"
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.get(
                     base_url,
                     params={

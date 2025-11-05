@@ -32,7 +32,6 @@ def upgrade() -> None:
         sa.Column('email', sa.String(255), unique=True, nullable=False, index=True),
         sa.Column('hashed_password', sa.String(255), nullable=False),
         sa.Column('full_name', sa.String(255), nullable=True),
-        sa.Column('name', sa.String(255), nullable=True),
         sa.Column('institution', sa.String(255), nullable=True, index=True),
         sa.Column('role', sa.String(50), default='researcher', nullable=False),
         sa.Column('is_active', sa.Boolean, default=True, nullable=False),

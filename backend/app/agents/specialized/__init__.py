@@ -4,6 +4,7 @@ from .search import SearchAgent
 from .screening import ScreeningAgent
 from .qa import QAAgent
 from .credibility import CredibilityAgent
+from .statistical_agent import StatisticalAgent
 
 __all__ = [
     "CoordinatorAgent",
@@ -11,4 +12,5 @@ __all__ = [
     "ScreeningAgent",
     "QAAgent",
     "CredibilityAgent",
+    "StatisticalAgent",
 ]

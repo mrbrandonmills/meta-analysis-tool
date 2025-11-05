@@ -1,0 +1,48 @@
+# Railway Configuration for Celery Worker Service
+# Documentation: https://docs.railway.app/deploy/config-as-code
+#
+# To use this configuration:
+# 1. Create a new service in Railway named "celery-worker"
+# 2. Upload this file as railway.toml to the worker service
+# 3. Or reference this file in the worker service settings
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+
+[build.watchPaths]
+includes = ["backend/**"]
+
+[deploy]
+numReplicas = 1
+sleepApplication = false
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Celery workers don't have HTTP health checks
+# They report to Redis/message broker instead
+healthcheckPath = ""
+healthcheckTimeout = 0
+
+# Start command for Celery worker
+# Processes all queues: default, search, analysis, reviewer, notifications
+startCommand = "celery -A app.workers.celery_app worker --loglevel=info --queues=default,search,analysis,reviewer,notifications"
+
+# Resource limits
+[deploy.resources]
+memoryLimit = 1024  # 1 GB RAM (adjust based on workload)
+cpuLimit = 1.0      # 1 vCPU (adjust for concurrent tasks)
+
+# Environment variables
+# These should be referenced from the main backend service
+# Or manually configured in Railway dashboard
+[deploy.envVars]
+# Note: Actual values should be set in Railway UI
+# These are just placeholders showing what's required
+
+# DATABASE_URL = "${{ PostgreSQL.DATABASE_URL }}"
+# REDIS_URL = "${{ Redis.REDIS_URL }}"
+# ANTHROPIC_API_KEY = "${{ backend.ANTHROPIC_API_KEY }}"
+# SECRET_KEY = "${{ backend.SECRET_KEY }}"
+# DEBUG = "false"
+# LOG_LEVEL = "INFO"

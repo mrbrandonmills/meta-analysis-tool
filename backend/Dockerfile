@@ -52,6 +52,10 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy application code
 COPY backend/app ./app
 
+# Copy alembic migrations
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
+
 # Copy startup script
 COPY backend/start.sh ./start.sh
 

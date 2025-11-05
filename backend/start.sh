@@ -40,6 +40,19 @@ echo "Uvicorn location: $(which uvicorn)"
 echo "Port: ${PORT}"
 echo "Python path: ${PYTHONPATH}"
 
+# Run database migrations
+echo "Running database migrations..."
+if command -v alembic >/dev/null 2>&1; then
+    alembic upgrade head
+    if [ $? -eq 0 ]; then
+        echo "✓ Database migrations completed successfully"
+    else
+        echo "WARNING: Database migrations failed, but continuing startup"
+    fi
+else
+    echo "WARNING: alembic not found, skipping migrations"
+fi
+
 # Start uvicorn with production-optimized settings
 exec uvicorn app.main:app \
     --host 0.0.0.0 \

@@ -14,12 +14,25 @@ anthropic = "^0.18.1"
 langchain = "^0.1.9"
 langgraph = "^0.0.25"
 sqlalchemy = "^2.0.23"
-chromadb = "^0.4.22"
+
+# Statistical & Scientific Computing (REQUIRED for meta-analysis)
+numpy = "^1.26.2"
 scipy = "^1.11.4"
 pandas = "^2.1.4"
-pymupdf = "^1.23.8"
-spacy = "^3.7.2"
+statsmodels = "^0.14.1"
+scikit-learn = "^1.4.0"
+
+# Visualization (REQUIRED for forest plots)
+matplotlib = "^3.8.2"
+seaborn = "^0.13.1"
+
+# Web scraping and HTTP
 httpx = "^0.26.0"
+
+# Optional heavy dependencies (commented out for MVP)
+# chromadb = "^0.4.22"
+# pymupdf = "^1.23.8"
+# spacy = "^3.7.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.3"
