@@ -85,13 +85,13 @@ const Hero: React.FC = () => {
 
         {/* Main heading */}
         <motion.h1
-          className="text-center text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight mb-8"
+          className="text-center text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight mb-8 leading-tight"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span className="block text-gray-900">Transform Research</span>
-          <span className="block bg-gradient-to-r from-primary-600 via-accent-600 to-primary-600 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%]">
+          <span className="block text-gray-900 pb-2">Transform Research</span>
+          <span className="block bg-gradient-to-r from-primary-600 via-accent-600 to-primary-600 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%] pb-2">
             with AI Agents
           </span>
         </motion.h1>
