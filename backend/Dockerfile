@@ -52,11 +52,15 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy application code
 COPY backend/app ./app
 
+# Copy startup script
+COPY backend/start.sh ./start.sh
+
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app && \
     mkdir -p /app/logs /app/data /app/temp && \
-    chown -R appuser:appuser /app/logs /app/data /app/temp
+    chown -R appuser:appuser /app/logs /app/data /app/temp && \
+    chmod +x /app/start.sh
 
 # Switch to non-root user
 USER appuser
@@ -68,13 +72,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose port (Railway will override this with PORT env var)
 EXPOSE ${PORT}
 
-# Run with optimized uvicorn settings for production
-CMD uvicorn app.main:app \
-    --host 0.0.0.0 \
-    --port ${PORT} \
-    --workers 2 \
-    --loop uvloop \
-    --log-level info \
-    --no-access-log \
-    --proxy-headers \
-    --forwarded-allow-ips "*"
+# Run with start script (uses exec form for proper signal handling)
+CMD ["/app/start.sh"]
