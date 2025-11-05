@@ -72,6 +72,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose port (Railway will override this with PORT env var)
 EXPOSE ${PORT}
 
-# Run uvicorn directly (Railway Procfile override)
-# Note: Railway will use Procfile if present, otherwise this CMD
-CMD ["/opt/venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--app-dir", "/app"]
+# Run uvicorn directly (Railway will set PORT env var)
+# Note: Using shell form to allow $PORT variable substitution
+CMD /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2 --app-dir /app
