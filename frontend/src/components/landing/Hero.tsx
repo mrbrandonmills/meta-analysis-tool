@@ -130,7 +130,7 @@ const Hero: React.FC = () => {
             className="group px-8 py-4 bg-white/80 backdrop-blur-sm text-gray-900 rounded-xl font-semibold text-lg border border-gray-200 hover:border-gray-300 shadow-soft hover:shadow-medium transition-all duration-300"
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => router.push('/dashboard')} // TODO: Create /demo page
+            onClick={() => router.push('/demo')}
           >
             <span className="flex items-center gap-2">
               Watch Demo
@@ -212,7 +212,15 @@ const Hero: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.7 + index * 0.1 }}
               whileHover={{ y: -8, scale: 1.02 }}
-              onClick={() => router.push('/dashboard')} // TODO: Create /tools/[toolname] pages
+              onClick={() => {
+                const routes: { [key: string]: string } = {
+                  'Meta-Analysis': '/tools/meta-analysis/new',
+                  'Reviewer Matcher': '/tools/reviewer-matcher/new',
+                  'Peer Review': '/tools/peer-review/new',
+                  'Research Direction': '/tools/research-direction/new'
+                }
+                router.push(routes[tool.title] || '/dashboard')
+              }}
             >
               {/* Hover glow effect */}
               <div className={`absolute inset-0 bg-gradient-to-br from-${tool.color}-500/0 to-${tool.color}-600/0 group-hover:from-${tool.color}-500/5 group-hover:to-${tool.color}-600/10 transition-all duration-300`} />

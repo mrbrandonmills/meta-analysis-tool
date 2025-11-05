@@ -54,35 +54,34 @@ const DashboardNewPage: React.FC = () => {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 6)
 
-  // TODO: Create dedicated tool pages at /tools/[toolname]/new
   const quickActions = [
     {
       title: 'New Meta-Analysis',
       description: 'Start a systematic review',
       icon: Microscope,
       color: 'blue',
-      href: '/dashboard' // TODO: Change to /tools/meta-analysis/new
+      href: '/tools/meta-analysis/new'
     },
     {
       title: 'Find Reviewers',
       description: 'Match expert reviewers',
       icon: Users,
       color: 'green',
-      href: '/dashboard' // TODO: Change to /tools/reviewer-matcher/new
+      href: '/tools/reviewer-matcher/new'
     },
     {
       title: 'Generate Review',
       description: 'Create peer review',
       icon: FileText,
       color: 'purple',
-      href: '/dashboard' // TODO: Change to /tools/peer-review/new
+      href: '/tools/peer-review/new'
     },
     {
       title: 'Discover Gaps',
       description: 'Explore research directions',
       icon: Lightbulb,
       color: 'yellow',
-      href: '/dashboard' // TODO: Change to /tools/research-direction/new
+      href: '/tools/research-direction/new'
     }
   ]
 
@@ -162,7 +161,7 @@ const DashboardNewPage: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.5 }}
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/dashboard')} // TODO: Change to /tools/meta-analysis/new
+                onClick={() => router.push('/tools/meta-analysis/new')}
               >
                 <span className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
@@ -268,7 +267,7 @@ const DashboardNewPage: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Recent Projects</h2>
             <button
               className="group flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
-              onClick={() => router.push('/dashboard')} // TODO: Create /projects page
+              onClick={() => router.push('/projects')}
             >
               View All
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -291,7 +290,7 @@ const DashboardNewPage: React.FC = () => {
                 className="px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-glow-primary transition-all duration-300"
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/dashboard')} // TODO: Change to /tools/meta-analysis/new
+                onClick={() => router.push('/tools/meta-analysis/new')}
               >
                 <span className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
