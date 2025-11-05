@@ -67,6 +67,7 @@ module.exports = {
         'hard': '0 10px 40px rgba(0, 0, 0, 0.2)',
         'glow-primary': '0 0 20px rgba(37, 99, 235, 0.3)',
         'glow-accent': '0 0 20px rgba(168, 85, 247, 0.3)',
+        'glow-purple': '0 0 20px rgba(147, 51, 234, 0.3)',
         'glow-success': '0 0 20px rgba(34, 197, 94, 0.3)',
       },
       animation: {
