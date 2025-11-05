@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Layout from '@/components/layout/Layout'
-import { AgentPipeline, AgentState, AgentStep } from '@/components/workflow/AgentPipeline'
+import AgentPipeline, { AgentState, AgentStep } from '@/components/workflow/AgentPipeline'
 import {
   FileText,
   Upload,
