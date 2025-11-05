@@ -37,7 +37,17 @@ app = FastAPI(
 )
 
 # CORS
-allowed_origins = settings.allowed_origins.split(",")
+allowed_origins = settings.allowed_origins.split(",") if settings.allowed_origins else ["*"]
+# Always allow the Vercel frontend
+allowed_origins.extend([
+    "https://meta-analysis-tool.vercel.app",
+    "https://meta-analysis-tool-brandons-projects-c4dfa14a.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+])
+# Remove duplicates
+allowed_origins = list(set(allowed_origins))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
