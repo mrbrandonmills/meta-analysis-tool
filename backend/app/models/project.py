@@ -52,7 +52,7 @@ class Project(Base, BaseModel):
 
     # Shared results across all tools
     findings = Column(JSONB, nullable=True, default=dict)
-    metadata = Column(JSONB, nullable=True, default=dict)
+    project_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     user = relationship("User", back_populates="projects")

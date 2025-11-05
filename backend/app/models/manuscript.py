@@ -83,7 +83,7 @@ class Manuscript(Base, BaseModel):
     decision_letter = Column(Text, nullable=True)
 
     # Metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    manuscript_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     corresponding_author = relationship("User", foreign_keys=[corresponding_author_id])

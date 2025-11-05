@@ -70,7 +70,7 @@ class ResearchGap(Base, BaseModel):
     confidence = Column(Float, nullable=True)
 
     # Metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    gap_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     project = relationship("Project", foreign_keys=[project_id])

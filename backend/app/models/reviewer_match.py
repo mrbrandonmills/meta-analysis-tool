@@ -87,7 +87,7 @@ class ReviewerMatch(Base, BaseModel):
     response_received_at = Column(JSONB, nullable=True)
 
     # Additional metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    match_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     manuscript = relationship("Manuscript", back_populates="reviewer_matches")

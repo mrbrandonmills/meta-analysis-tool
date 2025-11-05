@@ -97,7 +97,7 @@ class ResearchProposal(Base, BaseModel):
     decision = Column(String(100), nullable=True)
 
     # Metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    proposal_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     project = relationship("Project", foreign_keys=[project_id])

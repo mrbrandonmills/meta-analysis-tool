@@ -93,7 +93,7 @@ class Paper(Base, BaseModel):
     full_text = Column(Text, nullable=True)
 
     # Additional metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    paper_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     projects = relationship("Project", secondary="project_papers", back_populates="papers", lazy="dynamic")

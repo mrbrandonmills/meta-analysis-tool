@@ -85,7 +85,7 @@ class PeerReview(Base, BaseModel):
     bias_score = Column(Float, nullable=True)
 
     # Additional metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    review_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     manuscript = relationship("Manuscript", back_populates="reviews")

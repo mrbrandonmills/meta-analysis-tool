@@ -64,7 +64,7 @@ class Researcher(Base, BaseModel):
     last_publication_date = Column(Date, nullable=True)
 
     # Additional metadata
-    metadata = Column(JSONB, nullable=True, default=dict)
+    researcher_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Profile data from external sources
     semantic_scholar_id = Column(String(100), nullable=True, index=True)
