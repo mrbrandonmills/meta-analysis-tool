@@ -10,7 +10,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Download,
-  ArrowRight
+  ArrowRight,
+  Search,
+  Filter,
+  Award,
+  FileText,
+  BarChart3,
+  FileDown
 } from 'lucide-react'
 import { useRouter } from 'next/router'
 
@@ -111,36 +117,42 @@ const MetaAnalysisNewPage: React.FC = () => {
           id: '1',
           name: 'Search Agent',
           description: 'Searching academic databases',
+          icon: Search,
           state: AgentState.PENDING
         },
         {
           id: '2',
           name: 'Screening Agent',
           description: 'Applying inclusion/exclusion criteria',
+          icon: Filter,
           state: AgentState.PENDING
         },
         {
           id: '3',
           name: 'Quality Assessment',
           description: 'Evaluating study quality',
+          icon: Award,
           state: AgentState.PENDING
         },
         {
           id: '4',
           name: 'Data Extraction',
           description: 'Extracting key data points',
+          icon: FileText,
           state: AgentState.PENDING
         },
         {
           id: '5',
           name: 'Statistical Analysis',
           description: 'Running meta-analysis calculations',
+          icon: BarChart3,
           state: AgentState.PENDING
         },
         {
           id: '6',
           name: 'Report Generation',
           description: 'Creating publication-ready report',
+          icon: FileDown,
           state: AgentState.PENDING
         }
       ]
