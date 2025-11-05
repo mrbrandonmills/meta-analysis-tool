@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better layer caching
-COPY requirements.txt ./
+COPY backend/requirements.txt ./
 
 # Install Python dependencies to a virtual environment
 RUN python -m venv /opt/venv
@@ -50,7 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 
 # Copy application code
-COPY app ./app
+COPY backend/app ./app
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
