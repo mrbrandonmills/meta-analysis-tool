@@ -1,0 +1,58 @@
+{
+  "search_query": {
+    "prompt_contains": "search query",
+    "response": "((systematic review) OR (meta-analysis)) AND (randomized controlled trial) AND (intervention OR treatment)"
+  },
+  "credibility_high": {
+    "prompt_contains": "randomized controlled trial",
+    "response": "HIGH credibility. This is a well-designed randomized controlled trial with a large sample size (n=500), double-blind methodology, peer-reviewed publication in a high-impact journal, and clear reporting of methods and results. The study demonstrates strong methodological rigor and low risk of bias."
+  },
+  "credibility_medium": {
+    "prompt_contains": "cohort study",
+    "response": "MEDIUM credibility. This is a prospective cohort study with adequate sample size and peer review. While not a randomized controlled trial, the methodology is sound for observational research. Some potential for selection bias and confounding factors."
+  },
+  "credibility_low": {
+    "prompt_contains": "case report",
+    "response": "LOW credibility. This is a case report with very small sample size (n=1-5). While it may provide interesting observations, the evidence level is limited. Cannot establish causation or generalizability."
+  },
+  "screening_include": {
+    "prompt_contains": "meets inclusion criteria",
+    "response": "INCLUDE. This study meets all specified inclusion criteria: (1) Published 2015-2023, (2) Randomized controlled trial design, (3) English language, (4) Peer-reviewed journal. The study addresses the research question and provides relevant outcome data."
+  },
+  "screening_exclude": {
+    "prompt_contains": "exclusion criteria",
+    "response": "EXCLUDE. This study does not meet inclusion criteria. Reason: Published before 2015 (year: 2010). While the methodology is sound, it falls outside the specified time frame for this systematic review."
+  },
+  "qa_effect_size": {
+    "prompt_contains": "effect size",
+    "response": "Based on the meta-analysis, the pooled effect size is 0.45 (95% CI: 0.32-0.58, p < 0.001). This represents a moderate positive effect of the intervention. The analysis included 15 studies with a total of 2,847 participants. Heterogeneity was moderate (I² = 45.2%)."
+  },
+  "qa_study_count": {
+    "prompt_contains": "how many studies",
+    "response": "The systematic review identified 247 potentially relevant studies through database searches. After screening, 32 studies met the inclusion criteria. Of these, 15 studies provided sufficient data for meta-analysis. The main reasons for exclusion were: wrong outcome measure (n=85), wrong study design (n=62), duplicate publication (n=38), and insufficient data (n=30)."
+  },
+  "coordinator_workflow": {
+    "prompt_contains": "workflow",
+    "response": "I will coordinate the meta-analysis workflow as follows:\n\n1. SEARCH PHASE: SearchAgent will query PubMed, Cochrane, and other databases using the constructed search strategy.\n\n2. SCREENING PHASE: ScreeningAgent will apply inclusion/exclusion criteria to all retrieved studies.\n\n3. QUALITY ASSESSMENT: CredibilityAgent will assess the methodological quality of included studies.\n\n4. DATA EXTRACTION: DataExtractionAgent will extract effect sizes and study characteristics.\n\n5. STATISTICAL ANALYSIS: StatisticalAgent will perform meta-analysis calculations and generate forest plots.\n\n6. REPORTING: Generate PRISMA flow diagram and comprehensive report.\n\nEstimated completion time: 2-4 hours depending on number of studies."
+  },
+  "gap_identification": {
+    "prompt_contains": "research gaps",
+    "response": "Based on this meta-analysis, I have identified the following research gaps:\n\n1. POPULATION GAPS: Most studies (78%) focus on adult populations. Only 3 studies included pediatric participants. No studies examined elderly populations (>75 years).\n\n2. INTERVENTION VARIATIONS: All studies used standard dosing. No studies examined dose-response relationships or personalized dosing strategies.\n\n3. LONG-TERM OUTCOMES: Follow-up periods ranged from 3-12 months. No studies examined outcomes beyond 1 year.\n\n4. METHODOLOGICAL GAPS: Limited use of active comparators. Most studies used placebo controls rather than comparing to existing treatments.\n\n5. GEOGRAPHIC DIVERSITY: 92% of studies conducted in Western countries. Underrepresented: Asia, Africa, South America."
+  },
+  "review_generation": {
+    "prompt_contains": "peer review",
+    "response": "PEER REVIEW\n\nSTRENGTHS:\n1. Novel approach to addressing an important research question\n2. Appropriate statistical methodology with adequate sample size\n3. Clear presentation of methods and results\n4. Comprehensive literature review\n\nWEAKNESSES:\n1. Limited discussion of potential confounding factors\n2. Generalizability may be limited due to narrow inclusion criteria\n3. Some methodological details could be clearer (e.g., randomization procedure)\n\nSUGGESTIONS:\n1. Expand discussion of limitations and potential biases\n2. Provide more detail on randomization and blinding procedures\n3. Consider subgroup analyses by relevant covariates\n4. Strengthen discussion of clinical implications\n\nRECOMMENDATION: Minor revisions required"
+  },
+  "expertise_analysis": {
+    "prompt_contains": "expertise",
+    "response": "Based on publication history analysis:\n\nPRIMARY EXPERTISE DOMAINS:\n- Meta-analysis and systematic reviews (42 publications)\n- Clinical trial methodology (38 publications)\n- Epidemiology and biostatistics (35 publications)\n\nSECONDARY EXPERTISE:\n- Healthcare interventions (28 publications)\n- Evidence-based medicine (25 publications)\n\nRECENT FOCUS (last 3 years):\n- Machine learning in healthcare (8 publications)\n- Personalized medicine (6 publications)\n\nEXPERTISE SCORE: 0.89 (High match for manuscript topics)"
+  },
+  "conflict_detection": {
+    "prompt_contains": "conflict",
+    "response": "CONFLICT OF INTEREST ANALYSIS:\n\nCO-AUTHORSHIP:\n- Direct co-authorship: None detected\n- Shared co-authors: 2 common collaborators (Smith J, Johnson A) in past 5 years\n- Co-authorship score: 0.15 (Low risk)\n\nINSTITUTIONAL AFFILIATION:\n- Same institution: No\n- Affiliated institutions: Yes (collaborative research agreement)\n- Affiliation score: 0.10 (Low risk)\n\nCITATION PATTERNS:\n- Mutual citations: 4 instances\n- Self-citations: Within normal range\n- Citation score: 0.05 (Very low risk)\n\nOVERALL CONFLICT RISK: 0.12 (LOW - No significant conflicts detected)\n\nRECOMMENDATION: Suitable as reviewer with disclosure of minor collaborative history"
+  },
+  "default_response": {
+    "prompt_contains": "",
+    "response": "I understand. I will process this request and provide a thoughtful, evidence-based response."
+  }
+}

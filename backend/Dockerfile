@@ -1,27 +1,80 @@
-# Backend Dockerfile
-# NOTE: This assumes Railway root directory is set to "backend"
+# Multi-stage Dockerfile for Production Backend API
+# Optimized for Railway deployment with minimal image size and fast builds
+
+# ============================================================================
+# Stage 1: Builder - Install dependencies
+# ============================================================================
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better layer caching
+COPY requirements.txt ./
+
+# Install Python dependencies to a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ============================================================================
+# Stage 2: Runtime - Minimal production image
+# ============================================================================
 FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    PORT=8000
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Copy requirements
-COPY requirements.txt ./requirements.txt
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy application
+# Copy application code
 COPY app ./app
 
-# Expose port
-EXPOSE 8000
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app && \
+    mkdir -p /app/logs /app/data /app/temp && \
+    chown -R appuser:appuser /app/logs /app/data /app/temp
 
-# Run the application
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Switch to non-root user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Expose port (Railway will override this with PORT env var)
+EXPOSE ${PORT}
+
+# Run with optimized uvicorn settings for production
+CMD uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port ${PORT} \
+    --workers 2 \
+    --loop uvloop \
+    --log-level info \
+    --no-access-log \
+    --proxy-headers \
+    --forwarded-allow-ips "*"

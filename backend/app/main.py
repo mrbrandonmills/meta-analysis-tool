@@ -5,8 +5,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.v1 import meta_analysis, agents, studies
+from app.api.v1 import meta_analysis, agents, studies, auth, health
 from app.core.config import get_settings
+from app.core.logging_config import configure_logging
+from app.core.middleware import (
+    RateLimitMiddleware,
+    RequestIDMiddleware,
+    PerformanceMiddleware,
+    ErrorHandlingMiddleware,
+    rate_limiter,
+)
+from app.db.session import init_async_db, close_async_db
+
+# Configure logging before initializing settings
+configure_logging()
 
 settings = get_settings()
 
@@ -18,25 +30,94 @@ async def lifespan(app: FastAPI):
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"Log level: {settings.log_level}")
 
-    # Initialize databases, connections, etc.
-    # TODO: Initialize database connection
-    # TODO: Initialize vector database
-    # TODO: Initialize agent registry
+    # Validate Anthropic API key at startup
+    if not settings.anthropic_api_key or settings.anthropic_api_key == "your_anthropic_api_key_here":
+        error_msg = (
+            "CRITICAL ERROR: Anthropic API key is missing or not configured. "
+            "Please set ANTHROPIC_API_KEY environment variable. "
+            "For Railway deployment, see RAILWAY_SETUP.md"
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    # Validate API key format (should start with 'sk-ant-')
+    if not settings.anthropic_api_key.startswith("sk-ant-"):
+        error_msg = (
+            "CRITICAL ERROR: Anthropic API key appears to be invalid (should start with 'sk-ant-'). "
+            "Please check your ANTHROPIC_API_KEY environment variable."
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    logger.info("✓ Anthropic API key validated successfully")
+
+    # Initialize database
+    try:
+        await init_async_db()
+        logger.info("✓ Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        # Continue anyway for development, but log the error
+
+    # Initialize rate limiter
+    try:
+        await rate_limiter.init()
+        logger.info("✓ Rate limiter initialized successfully")
+    except Exception as e:
+        logger.warning(f"Rate limiter initialization failed: {e}")
+
+    logger.info("✓ Meta-Analysis Research Platform started successfully")
 
     yield
 
     # Cleanup
     logger.info("Shutting down Meta-Analysis Research Platform")
 
+    # Close database connections
+    try:
+        await close_async_db()
+        logger.info("✓ Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}")
+
+    # Close rate limiter
+    try:
+        await rate_limiter.close()
+        logger.info("✓ Rate limiter closed")
+    except Exception as e:
+        logger.error(f"Error closing rate limiter: {e}")
+
+    logger.info("✓ Meta-Analysis Research Platform shut down successfully")
+
 
 app = FastAPI(
     title="Meta-Analysis Research Platform",
-    description="AI-powered meta-analysis using specialized research agents",
+    description="AI-powered meta-analysis using specialized research agents with authentication, background jobs, and production-ready infrastructure",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# CORS
+# Add middleware (order matters - first added is outermost)
+# 1. Error handling (catch all errors)
+app.add_middleware(ErrorHandlingMiddleware)
+
+# 2. Performance tracking
+app.add_middleware(PerformanceMiddleware, slow_request_threshold=2.0)
+
+# 3. Request ID tracking
+app.add_middleware(RequestIDMiddleware)
+
+# 4. Rate limiting (after request ID so we can log the request ID)
+app.add_middleware(
+    RateLimitMiddleware,
+    authenticated_limit=100,  # 100 requests per minute for authenticated users
+    unauthenticated_limit=20,  # 20 requests per minute for unauthenticated
+    window_seconds=60,
+)
+
+# 5. CORS (last middleware, first to process)
 allowed_origins = settings.allowed_origins.split(",") if settings.allowed_origins else ["*"]
 # Always allow the Vercel frontend
 allowed_origins.extend([
@@ -57,25 +138,38 @@ app.add_middleware(
 )
 
 
-# Health check
-@app.get("/")
+# Root endpoint
+@app.get("/", tags=["root"])
 async def root():
-    """Root endpoint."""
+    """
+    Root endpoint with platform information.
+
+    Returns:
+    - Platform name and version
+    - Available tools
+    - Documentation links
+    """
     return {
         "name": "Meta-Analysis Research Platform",
         "version": "0.1.0",
         "status": "operational",
-        "agents": "ready",
+        "description": "AI-powered academic research platform with 4 tools",
+        "tools": {
+            "tool_1": "Meta-Analysis/Systematic Review Assistant (5/7 agents operational)",
+            "tool_2": "Research Direction Generator (planned)",
+            "tool_3": "Peer Review Quality Assistant (planned)",
+            "tool_4": "Expert Reviewer Matcher (planned)",
+        },
+        "agents_available": 5,
+        "agents_total": 25,
+        "documentation": "/docs",
+        "health_check": "/health",
     }
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
-
-
 # Include routers
+app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(meta_analysis.router, prefix="/api/v1", tags=["meta-analysis"])
 app.include_router(agents.router, prefix="/api/v1", tags=["agents"])
 app.include_router(studies.router, prefix="/api/v1", tags=["studies"])

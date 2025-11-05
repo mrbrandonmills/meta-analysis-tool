@@ -1,0 +1,231 @@
+version: '3.8'
+
+# Production-like Local Environment
+# Usage: docker-compose -f docker-compose.prod.yml up
+# Simulates production settings for testing before deployment
+
+services:
+  # PostgreSQL Database with production settings
+  db:
+    image: postgres:15-alpine
+    container_name: meta-analysis-db-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-meta_analysis}
+      # Production tuning
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_SHARED_BUFFERS: 256MB
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+
+  # Redis with persistence and production settings
+  redis:
+    image: redis:7-alpine
+    container_name: meta-analysis-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_prod_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+
+  # Backend API with production optimizations
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meta-analysis-api-prod
+    ports:
+      - "8000:8000"
+    environment:
+      # API Keys (from .env.production)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-meta_analysis}
+      - REDIS_URL=redis://redis:6379/0
+
+      # Application (production settings)
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=${SECRET_KEY}
+
+      # Research APIs
+      - PUBMED_API_KEY=${PUBMED_API_KEY:-}
+      - PUBMED_EMAIL=${PUBMED_EMAIL:-}
+
+      # CORS (production domains)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://meta-analysis-tool.vercel.app}
+
+      # Sentry (error tracking)
+      - SENTRY_DSN=${SENTRY_DSN:-}
+
+      # Performance
+      - WEB_CONCURRENCY=2
+      - MAX_WORKERS=2
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Celery Worker Pool (multiple workers)
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: meta-analysis-worker-prod
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-meta_analysis}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=${SECRET_KEY}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Flower (Celery monitoring) - password protected
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: meta-analysis-flower-prod
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLOWER_PORT=5555
+      - FLOWER_BASIC_AUTH=${FLOWER_USER:-admin}:${FLOWER_PASSWORD}
+    depends_on:
+      - redis
+      - worker
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+    command: celery -A app.tasks.celery_app flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD}
+
+  # Nginx reverse proxy (optional - for production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: meta-analysis-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+
+  # Prometheus (metrics collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: meta-analysis-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+
+  # Grafana (metrics visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: meta-analysis-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - meta-analysis-prod
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  meta-analysis-prod:
+    driver: bridge

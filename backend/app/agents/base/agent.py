@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APIError, AuthenticationError, RateLimitError, APIConnectionError
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -99,8 +99,45 @@ class BaseAgent(ABC):
 
             return response
 
+        # CRITICAL FIX: Add specific Anthropic exception handling
+        except AuthenticationError as e:
+            error_msg = (
+                f"Anthropic API authentication failed for {self.config.name}. "
+                f"Please verify your ANTHROPIC_API_KEY is correct. Error: {e}"
+            )
+            logger.error(error_msg)
+            self.status = AgentStatus.ERROR
+            raise ValueError(error_msg) from e
+
+        except RateLimitError as e:
+            error_msg = (
+                f"Anthropic API rate limit exceeded for {self.config.name}. "
+                f"Please wait before retrying. Error: {e}"
+            )
+            logger.error(error_msg)
+            self.status = AgentStatus.ERROR
+            raise ValueError(error_msg) from e
+
+        except APIConnectionError as e:
+            error_msg = (
+                f"Failed to connect to Anthropic API for {self.config.name}. "
+                f"Please check your network connection. Error: {e}"
+            )
+            logger.error(error_msg)
+            self.status = AgentStatus.ERROR
+            raise ValueError(error_msg) from e
+
+        except APIError as e:
+            error_msg = (
+                f"Anthropic API error in {self.config.name}: {e}. "
+                f"Status code: {getattr(e, 'status_code', 'unknown')}"
+            )
+            logger.error(error_msg)
+            self.status = AgentStatus.ERROR
+            raise ValueError(error_msg) from e
+
         except Exception as e:
-            logger.error(f"Error in {self.config.name} think: {e}")
+            logger.error(f"Unexpected error in {self.config.name} think: {e}")
             self.status = AgentStatus.ERROR
             raise
 

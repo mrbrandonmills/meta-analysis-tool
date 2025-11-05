@@ -10,6 +10,23 @@ router = APIRouter()
 @router.get("/agents/available")
 async def list_available_agents():
     """List all available agent types."""
+    return _get_agents_list()
+
+
+# HIGH PRIORITY FIX: Add alias route for /agents/list -> /agents/available
+# This ensures compatibility with frontend expectations
+@router.get("/agents/list")
+async def list_agents_alias():
+    """Alias endpoint for listing available agents (redirects to /agents/available)."""
+    return _get_agents_list()
+
+
+def _get_agents_list():
+    """Internal function to return the list of available agents.
+
+    This is used by both /agents/available and /agents/list endpoints
+    to maintain consistency and avoid code duplication.
+    """
     return {
         "agents": [
             {

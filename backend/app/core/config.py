@@ -1,4 +1,5 @@
 """Application configuration."""
+import os
 from functools import lru_cache
 from typing import Optional
 
@@ -16,7 +17,7 @@ class Settings(BaseSettings):
     )
 
     # API Keys
-    anthropic_api_key: str
+    anthropic_api_key: str = "dummy_key_for_migrations"
     openai_api_key: Optional[str] = None
 
     # Database
@@ -33,11 +34,14 @@ class Settings(BaseSettings):
     # Application
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    debug: bool = False
+    # CRITICAL FIX: Environment-based debug default to prevent production debug mode
+    # Default to False, but allow override via DEBUG environment variable
+    # This prevents accidental debug mode in production deployments like Railway
+    debug: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
     log_level: str = "INFO"
 
     # Security
-    secret_key: str
+    secret_key: str = "dummy_secret_key_for_migrations_change_in_production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
