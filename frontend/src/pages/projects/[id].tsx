@@ -188,7 +188,7 @@ const ProjectDetailPage: React.FC = () => {
           state = AgentState.COMPLETED
           break
         case WorkflowStatus.IN_PROGRESS:
-          state = AgentState.PROCESSING
+          state = AgentState.RUNNING
           break
         case WorkflowStatus.FAILED:
           state = AgentState.ERROR
