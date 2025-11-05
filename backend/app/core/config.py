@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     downloads_dir: str = "./downloads"
 
+    # CORS
+    allowed_origins: str = "http://localhost:3000,http://localhost:3001"
+
 
 @lru_cache()
 def get_settings() -> Settings:
