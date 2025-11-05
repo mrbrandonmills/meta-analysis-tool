@@ -76,3 +76,4 @@ downloads/
 # Data
 data/raw/
 data/processed/
+.vercel
