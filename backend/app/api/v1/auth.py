@@ -44,6 +44,75 @@ async def test_pydantic():
         return {"status": "error", "error": str(e), "type": type(e).__name__}
 
 
+@router.get("/test-registration-flow")
+async def test_registration_flow(db: AsyncSession = Depends(get_async_db)):
+    """Test each step of registration to isolate the error."""
+    results = {"steps": []}
+
+    try:
+        # Step 1: Create UserCreate model
+        results["steps"].append("Creating UserCreate model...")
+        user_data = UserCreate(
+            email=f"test_{datetime.utcnow().timestamp()}@example.com",
+            password="TestPass123",
+            full_name="Test User",
+            institution="Test U"
+        )
+        results["steps"].append(f"✓ UserCreate: {user_data.email}")
+
+        # Step 2: Hash password
+        results["steps"].append("Hashing password...")
+        hashed_password = hash_password(user_data.password)
+        results["steps"].append(f"✓ Password hashed: {hashed_password[:20]}...")
+
+        # Step 3: Create User object
+        results["steps"].append("Creating User object...")
+        new_user = User(
+            email=user_data.email,
+            hashed_password=hashed_password,
+            full_name=user_data.full_name,
+            institution=user_data.institution,
+            role=UserRole.RESEARCHER,
+            is_active=True,
+            is_verified=False,
+        )
+        results["steps"].append(f"✓ User object created")
+
+        # Step 4: Check database connection
+        results["steps"].append("Checking database...")
+        result = await db.execute(select(User).where(User.email == user_data.email))
+        existing = result.scalar_one_or_none()
+        results["steps"].append(f"✓ Database query works, existing user: {existing is not None}")
+
+        # Step 5: Try to create UserResponse
+        results["steps"].append("Creating UserResponse...")
+        response = UserResponse(
+            id=str(new_user.id) if new_user.id else "test-id",
+            email=new_user.email,
+            full_name=new_user.full_name,
+            institution=new_user.institution,
+            role=new_user.role,
+            is_active=new_user.is_active,
+            is_verified=new_user.is_verified,
+            created_at=new_user.created_at or datetime.utcnow(),
+            last_login=new_user.last_login,
+        )
+        results["steps"].append(f"✓ UserResponse created: {response.email}")
+
+        results["status"] = "success"
+        results["message"] = "All steps completed successfully"
+
+    except Exception as e:
+        results["status"] = "error"
+        results["error"] = str(e)
+        results["error_type"] = type(e).__name__
+        import traceback
+        results["traceback"] = traceback.format_exc()
+        logger.exception("Test registration flow failed")
+
+    return results
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
