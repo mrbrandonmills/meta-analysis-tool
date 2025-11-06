@@ -25,7 +25,19 @@ def upgrade() -> None:
 
     # Check if the column exists before attempting to drop it
     # This prevents errors if the migration runs on a database created after the fix
-    op.drop_column('users', 'name')
+    from sqlalchemy import inspect
+    from sqlalchemy.engine import reflection
+
+    # Get the connection from the operation context
+    conn = op.get_bind()
+    inspector = inspect(conn)
+
+    # Check if 'users' table exists and has 'name' column
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'name' in columns:
+            op.drop_column('users', 'name')
+        # If column doesn't exist, this migration is a no-op (already fixed)
 
 
 def downgrade() -> None:
