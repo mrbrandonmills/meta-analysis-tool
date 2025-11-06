@@ -10,6 +10,7 @@ pydantic-settings==2.1.0
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==5.0.0  # Latest version to fix 72-byte password bug during initialization
 python-multipart==0.0.6
 email-validator==2.1.0
 
