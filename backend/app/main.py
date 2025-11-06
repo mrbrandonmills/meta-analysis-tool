@@ -51,13 +51,26 @@ async def lifespan(app: FastAPI):
 
     logger.info("✓ Anthropic API key validated successfully")
 
-    # Initialize database
-    try:
-        await init_async_db()
-        logger.info("✓ Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
-        # Continue anyway for development, but log the error
+    # CRITICAL FIX: Do NOT call init_async_db() in production
+    # In production, Alembic migrations handle all database schema creation
+    # Calling Base.metadata.create_all() conflicts with migration-created schemas
+    # Only use init_async_db() for local development without migrations
+    #
+    # For production deployments:
+    # 1. Run: alembic upgrade head
+    # 2. Let FastAPI start without create_all()
+    #
+    # Initialize database (development only - migrations handle production)
+    if settings.debug and "sqlite" in settings.database_url:
+        # Only auto-create tables for local SQLite development
+        try:
+            await init_async_db()
+            logger.info("✓ Database initialized successfully (development mode)")
+        except Exception as e:
+            logger.error(f"Database initialization failed: {e}")
+            # Continue anyway for development, but log the error
+    else:
+        logger.info("Skipping init_async_db() - using Alembic migrations for schema management")
 
     # Initialize rate limiter
     try:
