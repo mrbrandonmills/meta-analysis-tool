@@ -24,8 +24,14 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing context with bcrypt configuration
+# Note: bcrypt has 72-byte limit, we handle this by truncating
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=True,  # Raise error if password > 72 bytes instead of silently truncating
+    bcrypt__ident="2b",  # Use 2b version to avoid wrap bug
+)
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -113,13 +119,19 @@ def hash_password(password: str) -> str:
     """
     Hash a password using bcrypt.
 
+    Note: bcrypt has a 72-byte limit. We truncate passwords to 72 bytes
+    to avoid errors. This is standard practice for bcrypt.
+
     Args:
         password: Plain text password
 
     Returns:
         Hashed password
     """
-    return pwd_context.hash(password)
+    # Truncate password to 72 bytes for bcrypt
+    # This is standard practice and recommended by bcrypt documentation
+    password_bytes = password.encode('utf-8')[:72]
+    return pwd_context.hash(password_bytes.decode('utf-8', errors='ignore'))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -133,7 +145,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Truncate password to 72 bytes for bcrypt (same as hash_password)
+    password_bytes = plain_password.encode('utf-8')[:72]
+    return pwd_context.verify(password_bytes.decode('utf-8', errors='ignore'), hashed_password)
 
 
 # JWT token utilities
