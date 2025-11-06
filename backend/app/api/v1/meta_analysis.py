@@ -14,6 +14,10 @@ router = APIRouter()
 # Global orchestrator (in production, use dependency injection)
 orchestrator = AgentOrchestrator()
 
+# Store coordinators by ID for cross-request access
+# In production, use Redis or database
+coordinators_by_id: dict[str, CoordinatorAgent] = {}
+
 
 class MetaAnalysisRequest(BaseModel):
     """Request to create a new meta-analysis."""
@@ -64,11 +68,16 @@ async def create_meta_analysis(request: MetaAnalysisRequest):
         coordinator = CoordinatorAgent(coordinator_config)
         orchestrator.register_agent(coordinator)
 
+        # Store coordinator by ID for cross-request access
+        analysis_id = str(coordinator.id)
+        coordinators_by_id[analysis_id] = coordinator
+        logger.info(f"Stored coordinator with ID: {analysis_id}")
+
         # Process the request to create workflow
         result = await coordinator.process(request.model_dump())
 
         return MetaAnalysisResponse(
-            id=str(coordinator.id),
+            id=analysis_id,
             status="workflow_created",
             message="Meta-analysis workflow created successfully",
             workflow=result,
@@ -91,10 +100,14 @@ async def execute_meta_analysis(analysis_id: str):
     try:
         logger.info(f"Executing meta-analysis: {analysis_id}")
 
-        # Get coordinator
-        coordinator = orchestrator.get_agent("Coordinator")
+        # Get coordinator by analysis_id
+        coordinator = coordinators_by_id.get(analysis_id)
         if not coordinator:
-            raise HTTPException(status_code=404, detail="Meta-analysis not found")
+            logger.error(f"Coordinator not found for analysis_id: {analysis_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
+            )
 
         # Initialize search agent
         search_config = AgentConfig(name="SearchAgent", role="search")  # type: ignore
@@ -181,15 +194,19 @@ async def execute_meta_analysis(analysis_id: str):
 @router.get("/meta-analysis/status/{analysis_id}")
 async def get_status(analysis_id: str):
     """Get the status of a meta-analysis."""
-    # Get agent from orchestrator
-    agent = orchestrator.get_agent("Coordinator")
-    if not agent:
-        raise HTTPException(status_code=404, detail="Meta-analysis not found")
+    # Get coordinator by analysis_id
+    coordinator = coordinators_by_id.get(analysis_id)
+    if not coordinator:
+        logger.error(f"Coordinator not found for analysis_id: {analysis_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
+        )
 
     return {
         "id": analysis_id,
-        "status": agent.status,
-        "decisions": len(agent.decisions),
+        "status": coordinator.status,
+        "decisions": len(coordinator.decisions),
     }
 
 
