@@ -20,7 +20,7 @@ class AgentConfig(BaseModel):
 
     name: str
     role: AgentRole
-    model: str = "claude-3-5-sonnet-20240620"  # Latest stable Claude 3.5 Sonnet
+    model: str = "claude-3-opus-20240229"  # Most capable Claude 3 model
     temperature: float = 0.3
     max_tokens: int = 4096
     expert_profile: Optional[str] = None
