@@ -22,13 +22,9 @@ if async_database_url.startswith("sqlite"):
 
 # Determine pool settings based on database type
 is_sqlite = "sqlite" in async_database_url
-pool_class = NullPool if is_sqlite else QueuePool
-pool_kwargs = {} if is_sqlite else {
-    "pool_size": 5,
-    "max_overflow": 10,
-    "pool_recycle": 3600,  # Recycle connections after 1 hour
-    "pool_timeout": 30,  # Timeout waiting for connection
-}
+# For async engines, always use NullPool (async engines manage their own pooling)
+pool_class = NullPool
+pool_kwargs = {}  # NullPool doesn't accept pool_size, max_overflow, etc.
 
 # Create async engine with connection pooling
 async_engine = create_async_engine(
