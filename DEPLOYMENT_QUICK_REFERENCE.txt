@@ -1,0 +1,200 @@
+================================================================================
+                    RAILWAY DEPLOYMENT QUICK REFERENCE
+                         BOARD MEETING READINESS
+================================================================================
+
+⏱️  TOTAL TIME: 35 minutes
+🎯 GOAL: Get platform 100% operational
+📍 URL: https://meta-analysis-tool-production.up.railway.app
+
+================================================================================
+                           CURRENT STATUS
+================================================================================
+
+✅ Backend API       - RUNNING
+✅ PostgreSQL        - HEALTHY
+❌ Redis             - NOT DEPLOYED → BREAKS: sessions, cache, Celery
+❌ Celery Workers    - NOT DEPLOYED → BREAKS: background jobs
+❌ Migrations        - NOT RUN      → BREAKS: authentication (500 errors)
+
+================================================================================
+                          FIX 1: REDIS (10 min)
+================================================================================
+
+Railway Dashboard: https://railway.app/dashboard
+→ Open project: "meta-analysis-tool"
+→ Click: "+ New" → "Database" → "Add Redis"
+→ Wait 2-3 minutes (status: "Deploying" → "Active")
+→ Go to backend service → "Variables" → Verify REDIS_URL exists
+→ Click "Deployments" → "Redeploy"
+→ Verify: curl .../health/detailed | grep "redis.*healthy"
+
+VERIFICATION:
+curl https://meta-analysis-tool-production.up.railway.app/api/v1/health/detailed
+→ Look for: "redis": {"status": "healthy"}
+
+================================================================================
+                     FIX 2: DATABASE MIGRATIONS (5 min)
+================================================================================
+
+Railway Dashboard → Backend Service → "Settings"
+→ Find "Start Command" field
+→ Change from: /app/start.sh
+→ Change to:
+   alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 2 --app-dir /app
+→ Click "Save"
+→ Click "Deploy" → "Deploy Latest"
+→ Check logs for: "Running upgrade -> 002_add_user_tables"
+
+VERIFICATION:
+curl -X POST https://meta-analysis-tool-production.up.railway.app/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"TestPass123!","full_name":"Test User"}'
+→ Should return: HTTP 201 (not 500)
+
+================================================================================
+                    FIX 3: CELERY WORKERS (20 min)
+================================================================================
+
+STEP 1: Create Service (2 min)
+Railway Dashboard → "+ New" → "Empty Service"
+→ Name: "meta-analysis-worker"
+
+STEP 2: Connect Repository (3 min)
+→ "Settings" → "Source" → "Connect Repo"
+→ Select repository (same as backend)
+→ Branch: main
+
+STEP 3: Configure Build (2 min)
+→ "Settings" → "Build"
+   - Builder: DOCKERFILE
+   - Dockerfile Path: backend/Dockerfile
+   - Watch Paths: backend/**
+
+STEP 4: Set Start Command (1 min)
+→ "Settings" → "Deploy" → "Start Command":
+celery -A app.workers.celery_app worker --loglevel=info --queues=default,search,analysis,reviewer,notifications --concurrency=4
+
+STEP 5: Add Environment Variables (10 min)
+→ "Variables" tab → Add these:
+
+Plain Text Variables:
+  PYTHONUNBUFFERED = 1
+  WORKER_TYPE = celery
+  DEBUG = false
+  LOG_LEVEL = INFO
+
+Reference Variables (link to other services):
+  DATABASE_URL → Reference → PostgreSQL → DATABASE_URL
+  REDIS_URL → Reference → Redis → REDIS_URL
+
+Copy from Backend Service (go to backend → Variables → copy values):
+  ANTHROPIC_API_KEY
+  OPENAI_API_KEY
+  SECRET_KEY
+  SENTRY_DSN (optional)
+  PUBMED_API_KEY (optional)
+  PUBMED_EMAIL (optional)
+
+STEP 6: Deploy (2 min)
+→ "Deploy" → "Deploy Latest"
+→ Wait 3-4 minutes for build
+→ Check logs for: "celery@<hostname> ready"
+
+VERIFICATION:
+curl https://meta-analysis-tool-production.up.railway.app/api/v1/health/detailed
+→ Look for: "celery": {"status": "healthy", "workers": 1}
+
+================================================================================
+                        FINAL VERIFICATION
+================================================================================
+
+Run automated verification:
+cd /Users/brandon/meta-analysis-tool
+./verify-deployment.sh
+
+EXPECTED OUTPUT:
+Database:     healthy
+Redis:        healthy
+Celery:       healthy
+
+🎉 ALL SYSTEMS OPERATIONAL
+Platform ready for board meeting!
+
+================================================================================
+                           TROUBLESHOOTING
+================================================================================
+
+PROBLEM: Redis shows "unhealthy"
+→ Check Redis service status is "Active"
+→ Verify REDIS_URL in backend variables
+→ Redeploy backend service
+
+PROBLEM: Registration returns 500
+→ Check backend logs for migration errors
+→ Verify start command includes "alembic upgrade head"
+→ Look for "Running upgrade -> 002" in logs
+
+PROBLEM: Celery shows "unknown"
+→ Check worker service logs for errors
+→ Verify REDIS_URL in worker variables
+→ Ensure Redis is healthy first
+
+PROBLEM: Worker won't start
+→ Check Dockerfile path is "backend/Dockerfile"
+→ Verify start command has no typos
+→ Check all environment variables set
+
+================================================================================
+                          VERIFICATION URLS
+================================================================================
+
+Health Check (detailed):
+https://meta-analysis-tool-production.up.railway.app/api/v1/health/detailed
+
+User Registration:
+curl -X POST https://meta-analysis-tool-production.up.railway.app/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"TestPass123!","full_name":"Test User"}'
+
+User Login:
+curl -X POST https://meta-analysis-tool-production.up.railway.app/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"TestPass123!"}'
+
+================================================================================
+                            TIMELINE
+================================================================================
+
+00:00 - Start deployment
+00:02 - Redis deployed
+00:12 - Migrations run
+00:17 - Celery worker deployed
+00:37 - Verification complete
+00:40 - READY FOR BOARD MEETING
+
+================================================================================
+                          SUPPORT RESOURCES
+================================================================================
+
+Full Guide:      /Users/brandon/meta-analysis-tool/RAILWAY_DEPLOYMENT_GUIDE.md
+Checklist:       /Users/brandon/meta-analysis-tool/QUICK_DEPLOY_CHECKLIST.md
+Summary:         /Users/brandon/meta-analysis-tool/DEPLOYMENT_SUMMARY.md
+Verify Script:   /Users/brandon/meta-analysis-tool/verify-deployment.sh
+
+Railway Support: https://discord.gg/railway
+Railway Docs:    https://docs.railway.app
+
+================================================================================
+                          CRITICAL REMINDERS
+================================================================================
+
+✓ All fixes use Railway web dashboard (no CLI needed)
+✓ Each fix has clear verification step
+✓ Rollback available via "Redeploy" previous version
+✓ All services fully managed by Railway
+✓ Zero manual server configuration required
+
+GO! Execute deployment NOW.
+
+================================================================================

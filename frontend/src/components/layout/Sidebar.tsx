@@ -14,7 +14,7 @@ import {
   Lightbulb
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },

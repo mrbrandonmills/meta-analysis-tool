@@ -1,0 +1,173 @@
+{
+  "summary": {
+    "timestamp": "2025-11-05T19:25:59.081351",
+    "environment": {
+      "backend_url": "https://meta-analysis-tool-production.up.railway.app",
+      "frontend_url": "https://meta-analysis-tool.vercel.app"
+    },
+    "overall_status": "NO-GO (CRITICAL)",
+    "pass_rate": 21.43,
+    "total_duration_seconds": 1.91,
+    "total_tests": 14,
+    "passed": 3,
+    "failed": 3,
+    "degraded": 0,
+    "skipped": 8
+  },
+  "test_results": [
+    {
+      "test_id": "AUTH-1.1",
+      "test_name": "User Registration",
+      "category": "Authentication",
+      "status": "FAIL",
+      "duration_seconds": 0.355654239654541,
+      "http_status_code": 500,
+      "details": "",
+      "error_message": "{\"type\":\"https://httpstatuses.com/500\",\"title\":\"Internal Server Error\",\"status\":500,\"detail\":\"An unexpected error occurred. Please try again later.\",\"instance\":\"http://meta-analysis-tool-production.up",
+      "timestamp": "2025-11-05T19:25:57.531268"
+    },
+    {
+      "test_id": "AUTH-1.2",
+      "test_name": "User Login",
+      "category": "Authentication",
+      "status": "FAIL",
+      "duration_seconds": 0.36632800102233887,
+      "http_status_code": 500,
+      "details": "",
+      "error_message": "{\"type\":\"https://httpstatuses.com/500\",\"title\":\"Internal Server Error\",\"status\":500,\"detail\":\"An unexpected error occurred. Please try again later.\",\"instance\":\"http://meta-analysis-tool-production.up",
+      "timestamp": "2025-11-05T19:25:57.898434"
+    },
+    {
+      "test_id": "AUTH-1.3",
+      "test_name": "Token Authentication",
+      "category": "Authentication",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "No access token available",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:57.898603"
+    },
+    {
+      "test_id": "AUTH-1.4",
+      "test_name": "Password Validation",
+      "category": "Authentication",
+      "status": "PASS",
+      "duration_seconds": 0,
+      "http_status_code": 400,
+      "details": "All 4 weak passwords rejected",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.544984"
+    },
+    {
+      "test_id": "SEARCH-2.1",
+      "test_name": "PubMed Search",
+      "category": "Literature Search",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "No access token available",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.545239"
+    },
+    {
+      "test_id": "SEARCH-2.2",
+      "test_name": "Multi-Database Search",
+      "category": "Literature Search",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "No access token",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.545293"
+    },
+    {
+      "test_id": "SEARCH-2.3",
+      "test_name": "Peer-Review Filter",
+      "category": "Literature Search",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.545324"
+    },
+    {
+      "test_id": "WORKFLOW-3.1",
+      "test_name": "Project Creation",
+      "category": "Meta-Analysis Workflow",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.545385"
+    },
+    {
+      "test_id": "WORKFLOW-3.2",
+      "test_name": "Full Workflow RQ1",
+      "category": "Meta-Analysis Workflow",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.545412"
+    },
+    {
+      "test_id": "STATS-4.1",
+      "test_name": "Cohen's d Calculation",
+      "category": "Statistical Calculations",
+      "status": "PASS",
+      "duration_seconds": 0,
+      "http_status_code": 200,
+      "details": "Calculated d=-0.973, expected -0.970",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.545794"
+    },
+    {
+      "test_id": "STATS-4.2",
+      "test_name": "Fixed-Effects Meta-Analysis",
+      "category": "Statistical Calculations",
+      "status": "PASS",
+      "duration_seconds": 0,
+      "http_status_code": 200,
+      "details": "Pooled effect=0.511, expected 0.512",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.546061"
+    },
+    {
+      "test_id": "PERF-5.1",
+      "test_name": "Search Response Time",
+      "category": "Performance",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:58.546158"
+    },
+    {
+      "test_id": "SEC-6.1",
+      "test_name": "SQL Injection Prevention",
+      "category": "Security",
+      "status": "FAIL",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "",
+      "error_message": "1/4 attempts not handled",
+      "timestamp": "2025-11-05T19:25:59.079367"
+    },
+    {
+      "test_id": "SEC-6.2",
+      "test_name": "XSS Prevention",
+      "category": "Security",
+      "status": "SKIP",
+      "duration_seconds": 0,
+      "http_status_code": null,
+      "details": "",
+      "error_message": "",
+      "timestamp": "2025-11-05T19:25:59.079472"
+    }
+  ]
+}

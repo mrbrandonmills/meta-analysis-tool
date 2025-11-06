@@ -1,5 +1,11 @@
 # Meta-Analysis Research Platform
 
+[![Backend Tests](https://github.com/YOUR_USERNAME/meta-analysis-tool/workflows/Backend%20Tests/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/backend-tests.yml)
+[![Frontend Tests](https://github.com/YOUR_USERNAME/meta-analysis-tool/workflows/Frontend%20Tests/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/frontend-tests.yml)
+[![Security Scanning](https://github.com/YOUR_USERNAME/meta-analysis-tool/workflows/Security%20Scanning/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/security.yml)
+[![codecov](https://codecov.io/gh/YOUR_USERNAME/meta-analysis-tool/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/meta-analysis-tool)
+[![Production Deployment](https://img.shields.io/badge/deployment-production-success)](https://meta-analysis-api.railway.app)
+
 An AI-powered research platform that uses specialized agents to automate and enhance meta-analysis, making it faster, more accurate, and fully explainable.
 
 ## 🎯 Vision
@@ -111,6 +117,121 @@ See [Demo Guide](docs/DEMO.md) for a complete walkthrough.
 - [Architecture Overview](ARCHITECTURE.md) - How the system works
 - [Demo Guide](docs/DEMO.md) - How to demonstrate the platform
 - [API Documentation](docs/API.md) - API reference
+
+## 🧪 Testing & CI/CD
+
+This project uses comprehensive automated testing and continuous integration to ensure code quality and reliability.
+
+### Running Tests Locally
+
+```bash
+# Run all tests (backend + frontend)
+./scripts/run-all-tests.sh
+
+# Run backend tests only
+./scripts/run-all-tests.sh --backend-only
+
+# Run frontend tests only
+./scripts/run-all-tests.sh --frontend-only
+
+# Include validation tests (experimental)
+./scripts/run-all-tests.sh --with-validation
+
+# Check coverage and generate reports
+./scripts/check-coverage.sh
+
+# Open coverage reports in browser
+./scripts/check-coverage.sh --open
+
+# Quick pre-commit checks
+./scripts/pre-commit-tests.sh
+```
+
+### CI/CD Workflows
+
+Our GitHub Actions workflows automatically test every change:
+
+#### Backend Tests
+- **Trigger**: Push to main/develop, Pull requests
+- **Coverage**: Unit tests, integration tests, validation tests
+- **Quality Gates**: 80% code coverage required
+- **Security**: Bandit security scanning
+- **Runtime**: ~5-10 minutes
+
+#### Frontend Tests
+- **Trigger**: Push to main/develop, Pull requests
+- **Coverage**: Linting, type checking, tests, build verification
+- **Quality Gates**: 60% code coverage target
+- **Security**: npm audit, ESLint
+- **Runtime**: ~5-8 minutes
+
+#### Security Scanning
+- **Trigger**: Push, Pull requests, Weekly schedule
+- **Scans**:
+  - Dependency vulnerabilities (Safety, npm audit)
+  - Secret detection (TruffleHog)
+  - Code analysis (CodeQL)
+  - Container scanning (Trivy)
+  - Security linting (Bandit)
+- **Runtime**: ~10-15 minutes
+
+#### Production Readiness
+- **Trigger**: Manual or weekly schedule
+- **Tests**:
+  - Comprehensive test suite against production
+  - Performance testing
+  - Health checks
+  - API validation
+- **Reporting**: Automated issue creation on failures
+- **Runtime**: ~20-30 minutes
+
+### Test Coverage
+
+We maintain high test coverage standards:
+- **Backend**: 80% minimum coverage (enforced in CI)
+- **Frontend**: 60% target coverage (new tests being added)
+- **Critical paths**: 90%+ coverage required
+
+Coverage reports are automatically uploaded to [Codecov](https://codecov.io) and visible in pull requests.
+
+### Quality Standards
+
+All code must pass:
+- ✅ Unit tests and integration tests
+- ✅ Code formatting (Black, Prettier)
+- ✅ Linting (flake8, ESLint)
+- ✅ Type checking (mypy, TypeScript)
+- ✅ Security scans (no high/critical vulnerabilities)
+- ✅ Coverage thresholds
+
+### Development Workflow
+
+```bash
+# 1. Make your changes
+git checkout -b feature/my-feature
+
+# 2. Run pre-commit checks
+./scripts/pre-commit-tests.sh
+
+# 3. Commit if checks pass
+git commit -m "Add my feature"
+
+# 4. Run full test suite
+./scripts/run-all-tests.sh
+
+# 5. Check coverage
+./scripts/check-coverage.sh
+
+# 6. Push and create PR
+git push origin feature/my-feature
+```
+
+### Continuous Deployment
+
+- **Production**: Automatic deployment on merge to `main`
+- **Staging**: Automatic deployment on merge to `develop`
+- **Platforms**: Railway (backend), Vercel (frontend)
+- **Post-deploy**: Smoke tests verify deployment health
 
 ## 🗺️ Roadmap
 

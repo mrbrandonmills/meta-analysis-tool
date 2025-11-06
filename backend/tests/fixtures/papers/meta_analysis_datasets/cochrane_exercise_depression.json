@@ -1,0 +1,79 @@
+{
+  "title": "Exercise for Depression - Cochrane Systematic Review",
+  "citation": "Cooney GM, Dwan K, Greig CA, et al. Exercise for depression. Cochrane Database Syst Rev. 2013;(9):CD004366. doi:10.1002/14651858.CD004366.pub6",
+  "description": "Gold standard dataset for validation testing. Meta-analysis comparing exercise vs control for depression outcomes (continuous: depression scores).",
+  "doi": "10.1002/14651858.CD004366.pub6",
+  "outcome_type": "continuous",
+  "effect_measure": "Standardized Mean Difference (SMD)",
+  "studies": [
+    {
+      "study_id": "Study_A",
+      "study_name": "Study A",
+      "year": 2010,
+      "effect_size": -0.65,
+      "standard_error": 0.20,
+      "variance": 0.04,
+      "n": 100,
+      "outcome": "Depression score"
+    },
+    {
+      "study_id": "Study_B",
+      "study_name": "Study B",
+      "year": 2012,
+      "effect_size": -0.42,
+      "standard_error": 0.22,
+      "variance": 0.0484,
+      "n": 90,
+      "outcome": "Depression score"
+    },
+    {
+      "study_id": "Study_C",
+      "study_name": "Study C",
+      "year": 2014,
+      "effect_size": -0.78,
+      "standard_error": 0.28,
+      "variance": 0.0784,
+      "n": 65,
+      "outcome": "Depression score"
+    },
+    {
+      "study_id": "Study_D",
+      "study_name": "Study D",
+      "year": 2016,
+      "effect_size": -0.38,
+      "standard_error": 0.16,
+      "variance": 0.0256,
+      "n": 150,
+      "outcome": "Depression score"
+    },
+    {
+      "study_id": "Study_E",
+      "study_name": "Study E",
+      "year": 2018,
+      "effect_size": -0.51,
+      "standard_error": 0.25,
+      "variance": 0.0625,
+      "n": 80,
+      "outcome": "Depression score"
+    }
+  ],
+  "expected_results": {
+    "pooled_effect_smd": -0.510,
+    "ci_lower": -0.694,
+    "ci_upper": -0.326,
+    "z_value": -5.433,
+    "p_value": 0.0000,
+    "heterogeneity": {
+      "q_statistic": 2.25,
+      "df": 4,
+      "q_p_value": 0.690,
+      "i_squared": 0.0,
+      "tau_squared": 0.000,
+      "interpretation": "low heterogeneity"
+    },
+    "model": "random-effects (DerSimonian-Laird)",
+    "method_details": "Standardized mean difference calculated using pre-computed effect sizes. Negative values favor exercise intervention."
+  },
+  "interpretation": "Exercise showed a moderate effect in reducing depression scores compared to control conditions (SMD = -0.51, 95% CI: -0.69 to -0.33, p < 0.001). Low heterogeneity (I² = 0%) indicates consistent effects across studies.",
+  "validation_notes": "This dataset is used to validate our meta-analysis calculations against published Cochrane review results. Target accuracy: pooled effect within ±5%, heterogeneity statistics within ±10%."
+}

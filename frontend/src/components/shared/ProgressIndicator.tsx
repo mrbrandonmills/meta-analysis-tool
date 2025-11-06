@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatDuration } from '@/lib/utils';
+import { formatDuration } from '../../lib/utils';
 
 interface ProgressIndicatorProps {
   progress: number; // 0-100

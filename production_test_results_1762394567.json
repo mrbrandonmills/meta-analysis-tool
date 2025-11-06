@@ -1,0 +1,237 @@
+{
+  "summary": {
+    "timestamp": "2025-11-05T18:02:47.323655",
+    "total_tests": 19,
+    "passed": 11,
+    "failed": 2,
+    "degraded": 2,
+    "skipped": 4,
+    "execution_time_seconds": 2.64,
+    "avg_response_time_ms": 376.93,
+    "overall_status": "NO-GO (FIXABLE)"
+  },
+  "category_breakdown": {
+    "Health & Infrastructure": {
+      "PASS": 4,
+      "FAIL": 0,
+      "DEGRADED": 2,
+      "SKIP": 0
+    },
+    "Authentication": {
+      "PASS": 1,
+      "FAIL": 2,
+      "DEGRADED": 0,
+      "SKIP": 1
+    },
+    "Meta-Analysis Workflow": {
+      "PASS": 0,
+      "FAIL": 0,
+      "DEGRADED": 0,
+      "SKIP": 2
+    },
+    "API Endpoints": {
+      "PASS": 4,
+      "FAIL": 0,
+      "DEGRADED": 0,
+      "SKIP": 0
+    },
+    "Performance & Load": {
+      "PASS": 2,
+      "FAIL": 0,
+      "DEGRADED": 0,
+      "SKIP": 1
+    }
+  },
+  "detailed_results": [
+    {
+      "category": "Health & Infrastructure",
+      "test_name": "Basic Health Check",
+      "status": "PASS",
+      "response_time_ms": 184.75,
+      "http_code": 200,
+      "details": "Status: healthy",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:44.870096"
+    },
+    {
+      "category": "Health & Infrastructure",
+      "test_name": "Detailed Health Check",
+      "status": "DEGRADED",
+      "response_time_ms": 1118.65,
+      "http_code": 200,
+      "details": "DB: healthy, Redis: healthy, Celery: degraded",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:45.989056"
+    },
+    {
+      "category": "Health & Infrastructure",
+      "test_name": "Database Status",
+      "status": "PASS",
+      "response_time_ms": 1118.65,
+      "http_code": 200,
+      "details": "Service status: healthy",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:45.989089"
+    },
+    {
+      "category": "Health & Infrastructure",
+      "test_name": "Redis Status",
+      "status": "PASS",
+      "response_time_ms": 1118.65,
+      "http_code": 200,
+      "details": "Service status: healthy",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:45.989099"
+    },
+    {
+      "category": "Health & Infrastructure",
+      "test_name": "Celery Status",
+      "status": "DEGRADED",
+      "response_time_ms": 1118.65,
+      "http_code": 200,
+      "details": "Service status: degraded",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:45.989106"
+    },
+    {
+      "category": "Health & Infrastructure",
+      "test_name": "CORS Configuration",
+      "status": "PASS",
+      "response_time_ms": 82.3,
+      "http_code": 200,
+      "details": "CORS header: https://meta-analysis-tool.vercel.app",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.071746"
+    },
+    {
+      "category": "Authentication",
+      "test_name": "User Registration",
+      "status": "FAIL",
+      "response_time_ms": 98.81,
+      "http_code": 500,
+      "details": "{\"type\":\"https://httpstatuses.com/500\",\"title\":\"Internal Server Error\",\"status\":500,\"detail\":\"An unexpected error occurred. Please try again later.\",\"instance\":\"http://meta-analysis-tool-production.up",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.174706"
+    },
+    {
+      "category": "Authentication",
+      "test_name": "User Login",
+      "status": "FAIL",
+      "response_time_ms": 117.7,
+      "http_code": 500,
+      "details": "{\"type\":\"https://httpstatuses.com/500\",\"title\":\"Internal Server Error\",\"status\":500,\"detail\":\"An unexpected error occurred. Please try again later.\",\"instance\":\"http://meta-analysis-tool-production.up",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.293125"
+    },
+    {
+      "category": "Authentication",
+      "test_name": "Token Authentication",
+      "status": "SKIP",
+      "response_time_ms": 0,
+      "http_code": null,
+      "details": "No access token available",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.293217"
+    },
+    {
+      "category": "Authentication",
+      "test_name": "Unauthorized Access Protection",
+      "status": "PASS",
+      "response_time_ms": 75.54,
+      "http_code": 401,
+      "details": "Correctly rejected unauthorized request",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.368772"
+    },
+    {
+      "category": "Meta-Analysis Workflow",
+      "test_name": "Meta-Analysis Creation",
+      "status": "SKIP",
+      "response_time_ms": 0,
+      "http_code": null,
+      "details": "No access token available",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.368885"
+    },
+    {
+      "category": "Meta-Analysis Workflow",
+      "test_name": "Meta-Analysis List",
+      "status": "SKIP",
+      "response_time_ms": 0,
+      "http_code": null,
+      "details": "No access token available",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.368892"
+    },
+    {
+      "category": "API Endpoints",
+      "test_name": "API Documentation",
+      "status": "PASS",
+      "response_time_ms": 70.8,
+      "http_code": 200,
+      "details": "Swagger UI accessible",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.439703"
+    },
+    {
+      "category": "API Endpoints",
+      "test_name": "OpenAPI Specification",
+      "status": "PASS",
+      "response_time_ms": 115.02,
+      "http_code": 200,
+      "details": "26 endpoints documented",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.555079"
+    },
+    {
+      "category": "API Endpoints",
+      "test_name": "404 Error Handling",
+      "status": "PASS",
+      "response_time_ms": 176.63,
+      "http_code": 404,
+      "details": "Correctly returned 404",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.731853"
+    },
+    {
+      "category": "API Endpoints",
+      "test_name": "Invalid JSON Handling",
+      "status": "PASS",
+      "response_time_ms": 72.61,
+      "http_code": 422,
+      "details": "Correctly rejected invalid JSON",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:46.804563"
+    },
+    {
+      "category": "Performance & Load",
+      "test_name": "Health Endpoint Response Time",
+      "status": "PASS",
+      "response_time_ms": 82.15,
+      "http_code": 200,
+      "details": "Avg: 82.15ms, Min: 73.22ms, Max: 92.9ms",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:47.215950"
+    },
+    {
+      "category": "Performance & Load",
+      "test_name": "Concurrent Request Handling",
+      "status": "PASS",
+      "response_time_ms": 103.06,
+      "http_code": 200,
+      "details": "10/10 requests succeeded, avg response: 82.44ms",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:47.323179"
+    },
+    {
+      "category": "Performance & Load",
+      "test_name": "Database Performance",
+      "status": "SKIP",
+      "response_time_ms": 0,
+      "http_code": null,
+      "details": "No access token available",
+      "error": "",
+      "timestamp": "2025-11-05T18:02:47.323278"
+    }
+  ]
+}

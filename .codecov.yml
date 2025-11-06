@@ -1,0 +1,174 @@
+# Codecov Configuration for Meta-Analysis Tool
+# Documentation: https://docs.codecov.com/docs/codecov-yaml
+
+# Coverage targets and thresholds
+coverage:
+  status:
+    project:
+      default:
+        # Target 80% overall coverage
+        target: 80%
+        # Allow 2% drop before failing
+        threshold: 2%
+        # Only post status to pull requests
+        informational: false
+
+    patch:
+      default:
+        # Target 70% coverage for new code
+        target: 70%
+        # Allow 5% drop for patches
+        threshold: 5%
+        # Only post status to pull requests
+        informational: false
+
+  # Coverage precision (2 decimal places)
+  precision: 2
+  # Round coverage to nearest value
+  round: down
+
+# Comment on pull requests
+comment:
+  # Comment layout
+  layout: "header,diff,flags,components,tree,footer"
+  # Behavior: default (post new comment), update (edit existing), once (only post once)
+  behavior: default
+  # Require coverage changes to post comment
+  require_changes: false
+  # Require tests to post comment
+  require_base: false
+  # Require head report to post comment
+  require_head: true
+
+# Ignore paths (don't include in coverage calculation)
+ignore:
+  - "backend/tests/**"
+  - "backend/app/db/migrations/**"
+  - "backend/app/__init__.py"
+  - "backend/**/__init__.py"
+  - "frontend/node_modules/**"
+  - "frontend/.next/**"
+  - "frontend/out/**"
+  - "**/*.config.js"
+  - "**/*.config.ts"
+  - "**/setup.py"
+  - "**/__pycache__/**"
+
+# Flags for organizing coverage reports
+flags:
+  backend:
+    # Backend Python code
+    paths:
+      - backend/app/
+    carryforward: true
+
+  frontend:
+    # Frontend TypeScript/JavaScript code
+    paths:
+      - frontend/src/
+    carryforward: true
+
+  unit:
+    # Unit tests
+    paths:
+      - backend/app/
+    carryforward: false
+
+  integration:
+    # Integration tests
+    paths:
+      - backend/app/
+    carryforward: false
+
+# Component coverage (track specific modules)
+component_management:
+  individual_components:
+    - component_id: agents
+      name: AI Agents
+      paths:
+        - backend/app/agents/**
+
+    - component_id: api
+      name: API Endpoints
+      paths:
+        - backend/app/api/**
+
+    - component_id: services
+      name: Services
+      paths:
+        - backend/app/services/**
+
+    - component_id: db
+      name: Database
+      paths:
+        - backend/app/db/**
+
+    - component_id: frontend_components
+      name: Frontend Components
+      paths:
+        - frontend/src/components/**
+
+    - component_id: frontend_pages
+      name: Frontend Pages
+      paths:
+        - frontend/src/app/**
+
+# Coverage checks
+codecov:
+  # Require CI to pass before allowing merge
+  require_ci_to_pass: true
+
+  # Notify settings
+  notify:
+    # Wait for all builds before notifying
+    wait_for_ci: true
+
+# Parsing configuration
+parsers:
+  gcov:
+    branch_detection:
+      conditional: true
+      loop: true
+      macro: true
+      method: true
+
+# Pull request annotations
+github_checks:
+  annotations: true
+
+# File-level coverage thresholds (optional)
+coverage:
+  range: 60..100
+  round: down
+  precision: 2
+
+# Specific targets for different parts of the codebase
+flag_management:
+  default_rules:
+    carryforward: true
+    statuses:
+      - type: project
+        target: auto
+        threshold: 2%
+      - type: patch
+        target: auto
+        threshold: 5%
+
+  individual_flags:
+    - name: backend
+      carryforward: true
+      statuses:
+        - type: project
+          target: 80%
+          threshold: 2%
+        - type: patch
+          target: 70%
+
+    - name: frontend
+      carryforward: true
+      statuses:
+        - type: project
+          target: 60%
+          threshold: 3%
+        - type: patch
+          target: 50%

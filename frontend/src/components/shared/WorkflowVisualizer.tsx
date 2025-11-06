@@ -1,5 +1,5 @@
 import React from 'react';
-import { Workflow, AgentStatus } from '@/lib/types';
+import { Workflow, AgentStatus } from '../../lib/types';
 import { CheckCircle2, Circle, Loader2, XCircle, Clock } from 'lucide-react';
 
 interface WorkflowVisualizerProps {

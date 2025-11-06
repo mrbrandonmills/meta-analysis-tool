@@ -1,6 +1,6 @@
 import React from 'react';
-import { AgentProgress, AgentStatus } from '@/lib/types';
-import { getAgentStatusColor, formatDuration } from '@/lib/utils';
+import { AgentProgress, AgentStatus } from '../../lib/types';
+import { getAgentStatusColor, formatDuration } from '../../lib/utils';
 import { Loader2, CheckCircle2, AlertCircle, Brain, Zap } from 'lucide-react';
 
 interface AgentStatusCardProps {

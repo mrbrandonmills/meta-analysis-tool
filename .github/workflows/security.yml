@@ -1,0 +1,303 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run security scans weekly on Mondays at 2 AM UTC
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  dependency-scan-python:
+    name: Python Dependency Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Run Safety check
+        continue-on-error: true
+        run: |
+          cd backend
+          echo "Running Safety check for Python dependencies..."
+          safety check --json --output safety-report.json || true
+          safety check || true
+
+      - name: Upload Safety report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-security-report
+          path: backend/safety-report.json
+          retention-days: 90
+
+  dependency-scan-node:
+    name: Node Dependency Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run npm audit
+        continue-on-error: true
+        run: |
+          cd frontend
+          echo "Running npm audit..."
+          npm audit --json > npm-audit-report.json || true
+          npm audit || true
+
+      - name: Upload npm audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-security-report
+          path: frontend/npm-audit-report.json
+          retention-days: 90
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better secret detection
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python', 'javascript']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (Filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Trivy vulnerability scanner (JSON output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-security-report
+          path: trivy-results.json
+          retention-days: 90
+
+  bandit-scan:
+    name: Bandit Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit scan
+        continue-on-error: true
+        run: |
+          cd backend
+          echo "Running Bandit security scan..."
+          bandit -r app \
+            -f json \
+            -o bandit-report.json \
+            --severity-level medium \
+            --confidence-level medium || true
+
+          bandit -r app \
+            --severity-level medium \
+            --confidence-level medium || true
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-scan
+          path: backend/bandit-report.json
+          retention-days: 90
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, GPL-3.0
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs:
+      - dependency-scan-python
+      - dependency-scan-node
+      - secret-scanning
+      - codeql-analysis
+      - trivy-scan
+      - bandit-scan
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Generate security summary
+        run: |
+          echo "## Security Scanning Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.dependency-scan-python.result }}" == "success" ]; then
+            echo "- ✅ Python dependency scan (Safety)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Python dependency scan (Safety) - Check logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.dependency-scan-node.result }}" == "success" ]; then
+            echo "- ✅ Node dependency scan (npm audit)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Node dependency scan (npm audit) - Check logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.secret-scanning.result }}" == "success" ]; then
+            echo "- ✅ Secret scanning (TruffleHog)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Secret scanning (TruffleHog) - Check logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.codeql-analysis.result }}" == "success" ]; then
+            echo "- ✅ CodeQL analysis" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ CodeQL analysis - Check logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.trivy-scan.result }}" == "success" ]; then
+            echo "- ✅ Trivy vulnerability scan" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Trivy vulnerability scan - Check logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.bandit-scan.result }}" == "success" ]; then
+            echo "- ✅ Bandit security scan" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Bandit security scan - Check logs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recommendations" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review all security scan reports in workflow artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "2. Address HIGH and CRITICAL severity issues immediately" >> $GITHUB_STEP_SUMMARY
+          echo "3. Update dependencies with known vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          echo "4. Review and remediate any detected secrets" >> $GITHUB_STEP_SUMMARY
+          echo "5. Check GitHub Security tab for detailed findings" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for critical failures
+        run: |
+          if [ "${{ needs.secret-scanning.result }}" == "failure" ]; then
+            echo "::error::Secret scanning detected potential secrets!"
+            exit 1
+          fi

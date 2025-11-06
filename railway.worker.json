@@ -1,0 +1,36 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "backend/Dockerfile",
+    "watchPatterns": [
+      "backend/**"
+    ]
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "sleepApplication": false,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "startCommand": "celery -A app.workers.celery_app worker --loglevel=info --queues=default,search,analysis,reviewer,notifications --concurrency=4"
+  },
+  "environments": {
+    "production": {
+      "name": "Production Worker",
+      "variables": {
+        "PYTHONUNBUFFERED": "1",
+        "DATABASE_URL": "${{DATABASE_URL}}",
+        "REDIS_URL": "${{REDIS_URL}}",
+        "ANTHROPIC_API_KEY": "${{ANTHROPIC_API_KEY}}",
+        "OPENAI_API_KEY": "${{OPENAI_API_KEY}}",
+        "SECRET_KEY": "${{SECRET_KEY}}",
+        "DEBUG": "false",
+        "LOG_LEVEL": "INFO",
+        "SENTRY_DSN": "${{SENTRY_DSN}}",
+        "PUBMED_API_KEY": "${{PUBMED_API_KEY}}",
+        "PUBMED_EMAIL": "${{PUBMED_EMAIL}}",
+        "WORKER_TYPE": "celery"
+      }
+    }
+  }
+}

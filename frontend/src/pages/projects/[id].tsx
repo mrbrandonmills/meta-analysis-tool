@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Layout from '@/components/layout/Layout'
 import AgentPipeline, { AgentState, AgentStep } from '@/components/workflow/AgentPipeline'
 import { useAppStore } from '@/stores/useAppStore'
-import { Project, ProjectStatus, ToolType, Workflow, WorkflowStatus } from '@/lib/types'
+import { Project, ProjectStatus, ToolType, Workflow, WorkflowStatus } from '../../lib/types'
 import {
   ArrowLeft,
   Download,
@@ -38,7 +38,7 @@ import {
   Award,
   Database
 } from 'lucide-react'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime } from '../../lib/utils'
 import toast from 'react-hot-toast'
 
 const toolIcons = {

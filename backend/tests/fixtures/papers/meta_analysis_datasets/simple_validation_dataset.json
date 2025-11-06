@@ -1,0 +1,88 @@
+{
+  "title": "Simple Validation Dataset - R metafor Reference",
+  "description": "Simple 5-study dataset for validating calculations against R metafor package. Used for unit testing statistical accuracy.",
+  "outcome_type": "continuous",
+  "studies": [
+    {
+      "study_id": "Study_A",
+      "study_name": "Study A",
+      "effect_size": 0.50,
+      "standard_error": 0.10,
+      "variance": 0.01,
+      "n": 100
+    },
+    {
+      "study_id": "Study_B",
+      "study_name": "Study B",
+      "effect_size": 0.60,
+      "standard_error": 0.15,
+      "variance": 0.0225,
+      "n": 80
+    },
+    {
+      "study_id": "Study_C",
+      "study_name": "Study C",
+      "effect_size": 0.45,
+      "standard_error": 0.12,
+      "variance": 0.0144,
+      "n": 120
+    },
+    {
+      "study_id": "Study_D",
+      "study_name": "Study D",
+      "effect_size": 0.55,
+      "standard_error": 0.11,
+      "variance": 0.0121,
+      "n": 110
+    },
+    {
+      "study_id": "Study_E",
+      "study_name": "Study E",
+      "effect_size": 0.48,
+      "standard_error": 0.13,
+      "variance": 0.0169,
+      "n": 95
+    }
+  ],
+  "r_metafor_validation": {
+    "r_version": "4.3.0",
+    "metafor_version": "4.2-0",
+    "r_code": "library(metafor)\nyi <- c(0.50, 0.60, 0.45, 0.55, 0.48)\nsei <- c(0.10, 0.15, 0.12, 0.11, 0.13)\nrma(yi, sei, method=\"FE\")\nrma(yi, sei, method=\"DL\")",
+    "fixed_effects": {
+      "pooled_effect": 0.5110,
+      "standard_error": 0.0530,
+      "ci_lower": 0.4071,
+      "ci_upper": 0.6149,
+      "z_value": 9.6380,
+      "p_value": 0.0000,
+      "model": "fixed-effects"
+    },
+    "random_effects_dl": {
+      "pooled_effect": 0.5110,
+      "standard_error": 0.0530,
+      "ci_lower": 0.4071,
+      "ci_upper": 0.6149,
+      "z_value": 9.6380,
+      "p_value": 0.0000,
+      "tau_squared": 0.0000,
+      "model": "random-effects (DerSimonian-Laird)",
+      "note": "Tau-squared = 0 because Q < df, indicating no heterogeneity. RE and FE give identical results."
+    },
+    "heterogeneity": {
+      "q_statistic": 0.8051,
+      "df": 4,
+      "q_p_value": 0.9378,
+      "i_squared": 0.0,
+      "interpretation": "low heterogeneity (no evidence of heterogeneity)",
+      "note": "Very low Q statistic indicates high homogeneity across studies"
+    }
+  },
+  "validation_tolerances": {
+    "effect_size_percent": 1.0,
+    "standard_error_absolute": 0.001,
+    "ci_absolute": 0.01,
+    "heterogeneity_q_absolute": 0.1,
+    "heterogeneity_i_squared_absolute": 5.0,
+    "tau_squared_absolute": 0.001
+  }
+}

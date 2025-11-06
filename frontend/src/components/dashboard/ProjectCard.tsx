@@ -4,8 +4,8 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/router'
 import { LucideIcon, ArrowRight, Clock, CheckCircle2, AlertCircle, Pause } from 'lucide-react'
-import { ProjectStatus } from '@/lib/types'
-import { formatRelativeTime } from '@/lib/utils'
+import { ProjectStatus } from '../../lib/types'
+import { formatRelativeTime } from '../../lib/utils'
 
 interface ProjectCardProps {
   id: string

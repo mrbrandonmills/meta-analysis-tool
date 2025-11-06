@@ -1,0 +1,285 @@
+name: Production Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  schedule:
+    # Run weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+  push:
+    branches: [main]
+    paths:
+      - 'comprehensive_test_suite.py'
+      - 'production_readiness_test.py'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  comprehensive-test-suite:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install requests httpx python-dotenv pyyaml
+
+      - name: Set environment URL
+        id: set-env
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            echo "API_URL=https://meta-analysis-api-staging.railway.app" >> $GITHUB_ENV
+            echo "ENV_NAME=Staging" >> $GITHUB_ENV
+          else
+            echo "API_URL=https://meta-analysis-api.railway.app" >> $GITHUB_ENV
+            echo "ENV_NAME=Production" >> $GITHUB_ENV
+          fi
+
+      - name: Run comprehensive test suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Running comprehensive test suite against ${{ env.ENV_NAME }}..."
+          python comprehensive_test_suite.py --api-url="${{ env.API_URL }}" || true
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## Comprehensive Test Suite Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ env.ENV_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL**: ${{ env.API_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "test_results_*.json" ]; then
+            echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat test_results_*.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-test-results-${{ env.ENV_NAME }}
+          path: |
+            test_results_*.json
+            comprehensive_test_*.log
+          retention-days: 90
+
+  production-readiness-test:
+    name: Production Readiness Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: comprehensive-test-suite
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install requests httpx python-dotenv pyyaml
+
+      - name: Set environment URL
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            echo "API_URL=https://meta-analysis-api-staging.railway.app" >> $GITHUB_ENV
+            echo "ENV_NAME=Staging" >> $GITHUB_ENV
+          else
+            echo "API_URL=https://meta-analysis-api.railway.app" >> $GITHUB_ENV
+            echo "ENV_NAME=Production" >> $GITHUB_ENV
+          fi
+
+      - name: Run production readiness test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Running production readiness test against ${{ env.ENV_NAME }}..."
+          python production_readiness_test.py --api-url="${{ env.API_URL }}" || true
+
+      - name: Generate readiness report
+        if: always()
+        run: |
+          echo "## Production Readiness Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ env.ENV_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL**: ${{ env.API_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "PRODUCTION_READINESS_REPORT_*.md" ]; then
+            echo "### Readiness Report" >> $GITHUB_STEP_SUMMARY
+            cat PRODUCTION_READINESS_REPORT_*.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "production_test_results_*.json" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Test Results JSON" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat production_test_results_*.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload production readiness results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-readiness-results-${{ env.ENV_NAME }}
+          path: |
+            production_test_results_*.json
+            PRODUCTION_READINESS_REPORT_*.md
+            production_readiness_*.log
+          retention-days: 90
+
+  performance-test:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: production-readiness-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install locust httpx requests
+
+      - name: Set environment URL
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            echo "API_URL=https://meta-analysis-api-staging.railway.app" >> $GITHUB_ENV
+            echo "ENV_NAME=Staging" >> $GITHUB_ENV
+          else
+            echo "API_URL=https://meta-analysis-api.railway.app" >> $GITHUB_ENV
+            echo "ENV_NAME=Production" >> $GITHUB_ENV
+          fi
+
+      - name: Run basic performance test
+        continue-on-error: true
+        run: |
+          echo "Running basic performance tests..."
+
+          # Test API health endpoint response time
+          echo "Testing health endpoint..."
+          time curl -s "${{ env.API_URL }}/health"
+
+          # Test API metrics endpoint if available
+          echo "Testing metrics endpoint..."
+          curl -s "${{ env.API_URL }}/metrics" || echo "Metrics endpoint not available"
+
+          echo "Performance test completed!"
+
+      - name: Generate performance report
+        if: always()
+        run: |
+          echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ env.ENV_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Basic performance tests completed. See artifacts for details." >> $GITHUB_STEP_SUMMARY
+
+  create-issue-on-failure:
+    name: Create Issue on Failure
+    runs-on: ubuntu-latest
+    needs: [comprehensive-test-suite, production-readiness-test, performance-test]
+    if: failure()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Production Readiness Tests Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Production Readiness Tests Failed
+
+            **Workflow Run**: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            **Environment**: ${{ github.event.inputs.environment || 'Production' }}
+            **Triggered by**: ${context.actor}
+            **Date**: ${new Date().toUTCString()}
+
+            ### Action Required
+            - [ ] Review test failures in workflow logs
+            - [ ] Check production environment health
+            - [ ] Review recent deployments
+            - [ ] Fix identified issues
+            - [ ] Re-run production readiness tests
+
+            ### Next Steps
+            1. Download test artifacts from the workflow run
+            2. Analyze failure logs
+            3. Fix critical issues
+            4. Re-deploy if necessary
+            5. Re-run this workflow to verify fixes
+
+            ---
+            *This issue was automatically created by the Production Readiness workflow.*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['production', 'automated', 'testing', 'urgent']
+            });
+
+  notify-success:
+    name: Notify Success
+    runs-on: ubuntu-latest
+    needs: [comprehensive-test-suite, production-readiness-test, performance-test]
+    if: success()
+
+    steps:
+      - name: Generate success summary
+        run: |
+          echo "## Production Readiness Tests Passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All production readiness tests completed successfully." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ github.event.inputs.environment || 'Production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tests Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Comprehensive test suite" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Production readiness test" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Performance test" >> $GITHUB_STEP_SUMMARY

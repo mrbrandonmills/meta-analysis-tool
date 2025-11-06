@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import Layout from '@/components/layout/Layout'
 import ProjectCard from '@/components/dashboard/ProjectCard'
 import { useAppStore } from '@/stores/useAppStore'
-import { ToolType, ProjectStatus } from '@/lib/types'
+import { ToolType, ProjectStatus } from '../../../lib/types'
 import {
   FileText,
   Plus,

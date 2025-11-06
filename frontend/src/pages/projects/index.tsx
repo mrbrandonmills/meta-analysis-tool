@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Layout from '@/components/layout/Layout'
 import ProjectCard from '@/components/dashboard/ProjectCard'
 import { useAppStore } from '@/stores/useAppStore'
-import { projectsApi } from '@/lib/api'
-import { ToolType, ProjectStatus, Project } from '@/lib/types'
+import { projectsApi } from '../../lib/api'
+import { ToolType, ProjectStatus, Project } from '../../lib/types'
 import {
   Search,
   Filter,

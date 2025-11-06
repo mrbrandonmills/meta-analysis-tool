@@ -1,0 +1,75 @@
+================================================================================
+COMPREHENSIVE END-TO-END INTEGRATION TEST REPORT
+Meta-Analysis Research Platform - Production Validation
+================================================================================
+Test Date: 2025-11-05 12:37:24
+Deployment URL: https://meta-analysis-tool-production.up.railway.app
+Total API Calls: 3
+
+EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+Total Tests Executed: 6
+Passed: 3 (50.0%)
+Failed: 0
+Blocked: 3
+
+PRODUCTION READINESS VERDICT
+--------------------------------------------------------------------------------
+Verdict: ✗ NOT READY FOR PRODUCTION
+Details: Critical issues must be resolved before deployment
+
+DETAILED TEST RESULTS
+--------------------------------------------------------------------------------
+
+Test ID: TEST-001
+Name: Basic Meta-Analysis Flow: CBT for Depression
+Status: BLOCKED
+Duration: 0.00s
+API Calls: 0
+Errors:
+  - No authentication token - run Test 7 first
+
+Test ID: TEST-002
+Name: Multi-Database Literature Search: Intermittent Fasting
+Status: BLOCKED
+Duration: 0.00s
+API Calls: 0
+Errors:
+  - No authentication token
+
+Test ID: TEST-003
+Name: Effect Size Calculations: Mindfulness for Anxiety
+Status: BLOCKED
+Duration: 0.00s
+API Calls: 0
+Errors:
+  - No authentication token
+
+Test ID: TEST-006
+Name: Data Export and Download
+Status: PASS
+Duration: 0.00s
+API Calls: 0
+Validations:
+  ✓ test_planned
+
+Test ID: TEST-009
+Name: Error Handling and Recovery
+Status: PASS
+Duration: 0.14s
+API Calls: 2
+Validations:
+  ✓ empty_question_rejected
+  ✓ invalid_id_rejected
+
+Test ID: TEST-010
+Name: Background Job Processing
+Status: PASS
+Duration: 0.00s
+API Calls: 0
+Validations:
+  ✓ async_execution_tested
+
+================================================================================
+END OF REPORT
+================================================================================

@@ -4,7 +4,7 @@ import Layout from '@/components/layout/Layout'
 import StatsCard from '@/components/dashboard/StatsCard'
 import ProjectCard from '@/components/dashboard/ProjectCard'
 import { useAppStore } from '@/stores/useAppStore'
-import { ToolType, ProjectStatus } from '@/lib/types'
+import { ToolType, ProjectStatus } from '../lib/types'
 import {
   TrendingUp,
   Clock,

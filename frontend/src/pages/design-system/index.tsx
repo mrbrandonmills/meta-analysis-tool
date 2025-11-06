@@ -7,8 +7,8 @@ import AgentStatusCard from '@/components/shared/AgentStatusCard';
 import WorkflowVisualizer from '@/components/shared/WorkflowVisualizer';
 import ProgressIndicator from '@/components/shared/ProgressIndicator';
 import DataTable from '@/components/shared/DataTable';
-import { AgentStatus, AgentProgress, Workflow, WorkflowStatus, CredibilityLevel } from '@/lib/types';
-import { getCredibilityColor, getCredibilityBadgeColor, getCredibilityIcon } from '@/lib/utils';
+import { AgentStatus, AgentProgress, Workflow, WorkflowStatus, CredibilityLevel } from '../../lib/types';
+import { getCredibilityColor, getCredibilityBadgeColor, getCredibilityIcon } from '../../lib/utils';
 import { Plus, Download, Trash2 } from 'lucide-react';
 
 const DesignSystemPage: React.FC = () => {

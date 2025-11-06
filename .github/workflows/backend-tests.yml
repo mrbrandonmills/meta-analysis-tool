@@ -1,0 +1,236 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-test.txt
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Verify test environment
+        run: |
+          cd backend
+          python --version
+          pip list
+          pytest --version
+
+      - name: Run unit tests with coverage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci-cd-testing-only
+          TESTING: "true"
+        run: |
+          cd backend
+          echo "Running unit tests with coverage..."
+          pytest tests/unit -v \
+            --cov=app \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --cov-report=html:htmlcov \
+            --tb=short \
+            --junit-xml=test-results-unit.xml
+
+          echo "Unit tests completed!"
+
+      - name: Run integration tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci-cd-testing-only
+          TESTING: "true"
+        run: |
+          cd backend
+          echo "Running integration tests..."
+          pytest tests/integration -v \
+            --tb=short \
+            --junit-xml=test-results-integration.xml
+
+          echo "Integration tests completed!"
+
+      - name: Run validation tests (allow failures)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci-cd-testing-only
+          TESTING: "true"
+        continue-on-error: true
+        run: |
+          cd backend
+          echo "Running validation tests (experimental)..."
+          pytest tests/validation -v -m validation \
+            --tb=short \
+            --junit-xml=test-results-validation.xml || true
+
+          echo "Validation tests completed (failures allowed for now)!"
+
+      - name: Generate coverage summary
+        run: |
+          cd backend
+          echo "## Backend Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          coverage report >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./backend/coverage.xml
+          flags: backend,unit
+          name: backend-coverage
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Check coverage threshold (80%)
+        run: |
+          cd backend
+          echo "Checking coverage threshold..."
+          coverage report --fail-under=80
+          echo "Coverage threshold met!"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            backend/test-results-*.xml
+            backend/coverage.xml
+            backend/htmlcov/
+          retention-days: 30
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: backend/test-results-*.xml
+          check_name: Backend Test Results
+          comment_title: Backend Test Results
+
+  backend-code-quality:
+    name: Backend Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install linting tools
+        run: |
+          pip install --upgrade pip
+          pip install black==23.12.1 flake8==7.0.0 isort==5.13.2 mypy==1.8.0 bandit==1.7.6
+
+      - name: Run Black (formatting check)
+        run: |
+          cd backend
+          echo "Checking code formatting with Black..."
+          black --check --diff app tests
+
+      - name: Run isort (import sorting)
+        run: |
+          cd backend
+          echo "Checking import sorting with isort..."
+          isort --check-only --diff app tests
+
+      - name: Run flake8 (linting)
+        run: |
+          cd backend
+          echo "Running flake8 linting..."
+          flake8 app tests \
+            --max-line-length=120 \
+            --extend-ignore=E203,W503 \
+            --exclude=__pycache__,migrations,venv,.venv,build,dist \
+            --count --statistics
+
+      - name: Run mypy (type checking)
+        continue-on-error: true
+        run: |
+          cd backend
+          echo "Running mypy type checking..."
+          mypy app --ignore-missing-imports --no-strict-optional || true
+
+      - name: Run Bandit (security linting)
+        run: |
+          cd backend
+          echo "Running Bandit security checks..."
+          bandit -r app -ll -f json -o bandit-report.json || true
+          bandit -r app -ll
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: backend/bandit-report.json
+          retention-days: 30

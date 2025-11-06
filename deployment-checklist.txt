@@ -1,0 +1,97 @@
+═══════════════════════════════════════════════════════════
+      RAILWAY DEPLOYMENT CHECKLIST - PRINT & CHECK OFF
+═══════════════════════════════════════════════════════════
+
+Date: _______________  Time Started: _______________
+
+STEP 1: DEPLOY REDIS (5 minutes)
+═══════════════════════════════════════════════════════════
+[ ] Open https://railway.app/dashboard
+[ ] Find "meta-analysis-tool" project
+[ ] Click "+ New" button
+[ ] Select "Database"
+[ ] Click "Add Redis"
+[ ] Wait for provisioning (1-2 min)
+[ ] Backend redeploys automatically (2-3 min)
+[ ] Run: curl https://meta-analysis-tool-production.up.railway.app/api/v1/health/detailed
+[ ] Verify Redis status: "healthy"
+
+Time completed: _______________
+
+STEP 2: RUN DATABASE MIGRATIONS (10 minutes)
+═══════════════════════════════════════════════════════════
+[ ] Click "backend" service
+[ ] Go to "Settings" tab
+[ ] Find "Start Command" section
+[ ] Change to: sh -c "alembic upgrade head && exec /app/start.sh"
+[ ] Click "Deploy" button
+[ ] Watch logs for "Running upgrade"
+[ ] See "✓ Database migrations completed successfully"
+[ ] Test: curl -X POST .../api/v1/auth/register (use full URL)
+[ ] Verify HTTP 201 response (not 500)
+
+Time completed: _______________
+
+STEP 3: DEPLOY CELERY WORKER (20 minutes)
+═══════════════════════════════════════════════════════════
+CREATE SERVICE:
+[ ] Click "+ New" → "Empty Service"
+[ ] Name: "meta-analysis-worker"
+[ ] Click "Create"
+
+CONNECT GITHUB:
+[ ] Settings → Source
+[ ] Click "Connect to GitHub"
+[ ] Select: "mrbrandonmills/meta-analysis-tool"
+[ ] Branch: "main"
+
+CONFIGURE BUILD:
+[ ] Settings → Build
+[ ] Builder: DOCKERFILE
+[ ] Dockerfile Path: backend/Dockerfile
+
+SET START COMMAND:
+[ ] Settings → Deploy → Start Command
+[ ] Enter: celery -A app.workers.celery_app worker --loglevel=info --queues=default,search,analysis,reviewer,notifications --concurrency=4
+
+COPY ENVIRONMENT VARIABLES (from backend service):
+[ ] DATABASE_URL (copy from backend)
+[ ] REDIS_URL (copy from backend)
+[ ] ANTHROPIC_API_KEY (copy from backend)
+[ ] SECRET_KEY (copy from backend)
+[ ] OPENAI_API_KEY (copy from backend)
+[ ] PYTHONUNBUFFERED=1
+[ ] LOG_LEVEL=INFO
+
+DEPLOY:
+[ ] Click "Deploy" button
+[ ] Wait for build (5-10 minutes)
+[ ] Check logs for "celery@meta-analysis-worker ready"
+[ ] Verify Celery status: "healthy"
+
+Time completed: _______________
+
+FINAL VERIFICATION
+═══════════════════════════════════════════════════════════
+[ ] cd /Users/brandon/meta-analysis-tool
+[ ] ./verify-deployment.sh
+[ ] Database: healthy
+[ ] Redis: healthy
+[ ] Celery: healthy
+[ ] Registration: HTTP 201
+[ ] Login: HTTP 200
+
+═══════════════════════════════════════════════════════════
+                   🎉 DEPLOYMENT COMPLETE
+═══════════════════════════════════════════════════════════
+
+Total time: _______________
+
+ALPHA TESTING READY: [ ]
+
+Notes / Issues encountered:
+_____________________________________________________________
+_____________________________________________________________
+_____________________________________________________________
+_____________________________________________________________
+
