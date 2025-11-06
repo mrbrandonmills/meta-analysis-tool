@@ -29,7 +29,7 @@
         "SECRET_KEY": "${{SECRET_KEY}}",
         "DEBUG": "false",
         "LOG_LEVEL": "INFO",
-        "ALLOWED_ORIGINS": "https://meta-analysis-tool.vercel.app,https://meta-analysis-tool-brandons-projects-c4dfa14a.vercel.app",
+        "ALLOWED_ORIGINS": "http://localhost:3000,http://localhost:3001,https://meta-analysis-tool.vercel.app,https://meta-analysis-tool-brandons-projects-c4dfa14a.vercel.app",
         "SENTRY_DSN": "${{SENTRY_DSN}}",
         "PUBMED_API_KEY": "${{PUBMED_API_KEY}}",
         "PUBMED_EMAIL": "${{PUBMED_EMAIL}}"
