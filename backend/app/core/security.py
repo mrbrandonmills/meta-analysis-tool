@@ -24,13 +24,10 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# Password hashing context with bcrypt configuration
-# Note: bcrypt has 72-byte limit, we handle this by truncating
+# Password hashing context using argon2 (more secure than bcrypt, no length limits)
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__truncate_error=True,  # Raise error if password > 72 bytes instead of silently truncating
-    bcrypt__ident="2b",  # Use 2b version to avoid wrap bug
+    schemes=["argon2"],
+    deprecated="auto"
 )
 
 # OAuth2 scheme for token authentication
@@ -117,10 +114,10 @@ class APIKeyCreate(BaseModel):
 # Password utilities
 def hash_password(password: str) -> str:
     """
-    Hash a password using bcrypt.
+    Hash a password using argon2.
 
-    Note: bcrypt has a 72-byte limit. We truncate passwords to 72 bytes
-    to avoid errors. This is standard practice for bcrypt.
+    Argon2 is the modern standard for password hashing (recommended by OWASP).
+    It has no practical length limits and is more secure than bcrypt.
 
     Args:
         password: Plain text password
@@ -128,10 +125,7 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password
     """
-    # Truncate password to 72 bytes for bcrypt
-    # This is standard practice and recommended by bcrypt documentation
-    password_bytes = password.encode('utf-8')[:72]
-    return pwd_context.hash(password_bytes.decode('utf-8', errors='ignore'))
+    return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -145,9 +139,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    # Truncate password to 72 bytes for bcrypt (same as hash_password)
-    password_bytes = plain_password.encode('utf-8')[:72]
-    return pwd_context.verify(password_bytes.decode('utf-8', errors='ignore'), hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 # JWT token utilities
