@@ -42,46 +42,53 @@ async def register(
 
     Returns the created user (without password).
     """
-    # Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    existing_user = result.scalar_one_or_none()
+    try:
+        # Check if user already exists
+        result = await db.execute(select(User).where(User.email == user_data.email))
+        existing_user = result.scalar_one_or_none()
 
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+        # Create new user
+        hashed_password = hash_password(user_data.password)
+
+        new_user = User(
+            email=user_data.email,
+            hashed_password=hashed_password,
+            full_name=user_data.full_name,
+            institution=user_data.institution,
+            role=UserRole.RESEARCHER,  # Default role
+            is_active=True,
+            is_verified=False,  # Will be verified via email
         )
 
-    # Create new user
-    hashed_password = hash_password(user_data.password)
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
 
-    new_user = User(
-        email=user_data.email,
-        hashed_password=hashed_password,
-        full_name=user_data.full_name,
-        institution=user_data.institution,
-        role=UserRole.RESEARCHER,  # Default role
-        is_active=True,
-        is_verified=False,  # Will be verified via email
-    )
+        logger.info(f"New user registered: {user_data.email}")
 
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    logger.info(f"New user registered: {user_data.email}")
-
-    return UserResponse(
-        id=str(new_user.id),
-        email=new_user.email,
-        full_name=new_user.full_name,
-        institution=new_user.institution,
-        role=new_user.role,
-        is_active=new_user.is_active,
-        is_verified=new_user.is_verified,
-        created_at=new_user.created_at,
-        last_login=new_user.last_login,
-    )
+        return UserResponse(
+            id=str(new_user.id),
+            email=new_user.email,
+            full_name=new_user.full_name,
+            institution=new_user.institution,
+            role=new_user.role,
+            is_active=new_user.is_active,
+            is_verified=new_user.is_verified,
+            created_at=new_user.created_at,
+            last_login=new_user.last_login,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error for {user_data.email}: {type(e).__name__}: {e}")
+        logger.exception("Full traceback:")
+        raise
 
 
 @router.post("/login", response_model=Token)
