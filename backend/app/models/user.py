@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import Column, String, Boolean, DateTime, Enum as SQLEnum, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 from app.db.base import Base
 from app.core.security import UserRole
@@ -105,7 +105,8 @@ class UserCreate(UserBase):
 
     password: str
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def password_strength(cls, v):
         """Validate password strength."""
         if len(v) < 8:
@@ -127,7 +128,8 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def password_strength(cls, v):
         """Validate password strength."""
         if v is not None:
