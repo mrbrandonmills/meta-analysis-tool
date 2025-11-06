@@ -49,8 +49,8 @@ class User(Base):
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
 
-    # Relationships (will be added as we create more models)
-    # projects = relationship("Project", back_populates="user")
+    # Relationships
+    projects = relationship("Project", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
     # api_keys = relationship("APIKey", back_populates="user")
 
     def __repr__(self):
