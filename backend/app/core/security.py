@@ -17,7 +17,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 from loguru import logger
 
 from app.core.config import get_settings
@@ -86,7 +86,8 @@ class PasswordReset(BaseModel):
     token: str
     new_password: str
 
-    @validator("new_password")
+    @field_validator("new_password")
+    @classmethod
     def password_strength(cls, v):
         """Validate password strength."""
         if len(v) < 8:
