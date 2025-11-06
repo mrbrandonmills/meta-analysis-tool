@@ -27,6 +27,23 @@ from app.core.security import (
 router = APIRouter()
 
 
+@router.get("/test-pydantic")
+async def test_pydantic():
+    """Test Pydantic UserCreate model validation."""
+    try:
+        from app.models.user import UserCreate
+        user_data = UserCreate(
+            email="test@example.com",
+            password="TestPass123",
+            full_name="Test",
+            institution="Test U"
+        )
+        return {"status": "success", "message": "Pydantic validation works", "email": user_data.email}
+    except Exception as e:
+        logger.exception("Pydantic test failed")
+        return {"status": "error", "error": str(e), "type": type(e).__name__}
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
