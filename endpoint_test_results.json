@@ -1,0 +1,36 @@
+{
+  "test_timestamp": "2025-11-06T14:29:52Z",
+  "api_base": "https://meta-analysis-tool-production.up.railway.app",
+  "endpoints": [
+    {
+      "endpoint": "/",
+      "method": "GET",
+      "status": 200,
+      "response": {"name":"Meta-Analysis Research Platform","version":"0.1.0","status":"operational","description":"AI-powered academic research platform with 4 tools","tools":{"tool_1":"Meta-Analysis/Systematic Review Assistant (5/7 agents operational)","tool_2":"Research Direction Generator (planned)","tool_3":"Peer Review Quality Assistant (planned)","tool_4":"Expert Reviewer Matcher (planned)"},"agents_available":5,"agents_total":25,"documentation":"/docs","health_check":"/health"}
+    },
+    {
+      "endpoint": "/api/v1/health",
+      "method": "GET",
+      "status": 200,
+      "response": {"status":"healthy","timestamp":"2025-11-06T14:29:53.094398","service":"meta-analysis-platform","version":"0.1.0"}
+    },
+    {
+      "endpoint": "/docs",
+      "method": "GET",
+      "status": 200,
+      "note": "Swagger UI endpoint"
+    },
+    {
+      "endpoint": "/openapi.json",
+      "method": "GET",
+      "status": 200,
+      "note": "OpenAPI specification"
+    },
+    {
+      "endpoint": "/api/v1/agents",
+      "method": "GET",
+      "status": 404,
+      "response": {"detail":"Not Found"}
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "summary": {
+    "total_bugs": 2,
+    "critical": 1,
+    "high": 1,
+    "medium": 0,
+    "low": 0
+  },
+  "bugs": [
+    {
+      "id": "BUG-001",
+      "category": "Authentication",
+      "title": "Token refresh fails",
+      "description": "Token refresh endpoint returned 422",
+      "severity": "HIGH",
+      "reproduction_steps": [
+        "POST https://meta-analysis-tool-production.up.railway.app/api/v1/auth/refresh with valid refresh_token"
+      ],
+      "expected_result": "200 OK with new access token",
+      "actual_result": "422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"refresh_token\"],\"msg\":\"Field required\",\"input\":null,\"url\":\"https://errors.pydantic.dev/2.5/v/missing\"}]}",
+      "timestamp": "2025-11-05T23:18:45.184932"
+    },
+    {
+      "id": "BUG-002",
+      "category": "Meta-Analysis",
+      "title": "Cannot create meta-analysis",
+      "description": "Create endpoint returned 500",
+      "severity": "CRITICAL",
+      "reproduction_steps": [
+        "POST https://meta-analysis-tool-production.up.railway.app/api/v1/meta-analysis/create with valid request"
+      ],
+      "expected_result": "200 OK with analysis ID and workflow",
+      "actual_result": "500: {\"detail\":\"Anthropic API error in Coordinator: Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-3-5-sonnet-20241022'}, 'request_id': 'req_011CUrEDVp6F1K975CL375u7'}. Status code: 404\"}",
+      "timestamp": "2025-11-05T23:18:46.394895"
+    }
+  ]
+}

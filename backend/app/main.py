@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.v1 import meta_analysis, agents, studies, auth, health
+from app.api.v1 import meta_analysis, agents, studies, auth, health, reports
 from app.core.config import get_settings
 from app.core.logging_config import configure_logging
 from app.core.middleware import (
@@ -186,6 +186,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(meta_analysis.router, prefix="/api/v1", tags=["meta-analysis"])
 app.include_router(agents.router, prefix="/api/v1", tags=["agents"])
 app.include_router(studies.router, prefix="/api/v1", tags=["studies"])
+app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
 
 
 if __name__ == "__main__":

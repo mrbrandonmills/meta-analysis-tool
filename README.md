@@ -1,10 +1,15 @@
 # Meta-Analysis Research Platform
 
-[![Backend Tests](https://github.com/YOUR_USERNAME/meta-analysis-tool/workflows/Backend%20Tests/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/backend-tests.yml)
-[![Frontend Tests](https://github.com/YOUR_USERNAME/meta-analysis-tool/workflows/Frontend%20Tests/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/frontend-tests.yml)
-[![Security Scanning](https://github.com/YOUR_USERNAME/meta-analysis-tool/workflows/Security%20Scanning/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/security.yml)
+[![Backend CI/CD](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/backend-ci-cd.yml/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/backend-ci-cd.yml)
+[![Frontend CI/CD](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/frontend-ci-cd.yml/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/frontend-ci-cd.yml)
+[![E2E Tests](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/e2e-tests.yml)
+[![Security Scanning](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/security.yml/badge.svg)](https://github.com/YOUR_USERNAME/meta-analysis-tool/actions/workflows/security.yml)
 [![codecov](https://codecov.io/gh/YOUR_USERNAME/meta-analysis-tool/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/meta-analysis-tool)
-[![Production Deployment](https://img.shields.io/badge/deployment-production-success)](https://meta-analysis-api.railway.app)
+[![Railway](https://img.shields.io/badge/Railway-Backend-0B0D0E?logo=railway)](https://meta-analysis-api.railway.app)
+[![Vercel](https://img.shields.io/badge/Vercel-Frontend-000000?logo=vercel)](https://meta-analysis-tool.vercel.app)
+[![Test Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](https://codecov.io/gh/YOUR_USERNAME/meta-analysis-tool)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python)](https://www.python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
 An AI-powered research platform that uses specialized agents to automate and enhance meta-analysis, making it faster, more accurate, and fully explainable.
 

@@ -106,6 +106,20 @@ export function getProjectStatusColor(status: ProjectStatus): string {
 }
 
 /**
+ * Format date to readable string
+ */
+export function formatDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
  * Format date to relative time
  */
 export function formatRelativeTime(date: Date | string): string {

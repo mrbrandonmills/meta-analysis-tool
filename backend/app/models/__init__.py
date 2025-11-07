@@ -5,12 +5,22 @@ from app.models.user import User, UserRole
 from app.models.project import Project, ToolType, ProjectStatus
 from app.models.workflow import Workflow, WorkflowStatus, AgentRole
 from app.models.paper import Paper, CredibilityLevel, DatabaseSource
+from app.models.pdf_metadata import (
+    PDFMetadata,
+    PDFDownloadStatus,
+    PDFSource,
+    FullTextExtraction,
+    SectionType,
+    FullTextScreening
+)
 from app.models.researcher import Researcher
 from app.models.manuscript import Manuscript, ManuscriptStatus, ManuscriptType
 from app.models.peer_review import PeerReview, ReviewRecommendation, ReviewStatus
 from app.models.reviewer_match import ReviewerMatch, MatchStatus, ConflictType
 from app.models.research_gap import ResearchGap, GapType, GapPriority
 from app.models.research_proposal import ResearchProposal, ProposalStatus, ProposalType
+from app.models.meta_analysis import MetaAnalysis, CoordinatorState, AgentExecution, MetaAnalysisStatus
+from app.models.report import Report, ReportTemplate, ReportFormat, ReportStatus
 from app.models.associations import project_papers, project_researchers, paper_authors
 
 __all__ = [
@@ -33,6 +43,13 @@ __all__ = [
     "Paper",
     "CredibilityLevel",
     "DatabaseSource",
+    # PDF and full-text models
+    "PDFMetadata",
+    "PDFDownloadStatus",
+    "PDFSource",
+    "FullTextExtraction",
+    "SectionType",
+    "FullTextScreening",
     "Researcher",
     # Tool 3: Peer Review models
     "Manuscript",
@@ -52,6 +69,16 @@ __all__ = [
     "ResearchProposal",
     "ProposalStatus",
     "ProposalType",
+    # Report models
+    "Report",
+    "ReportTemplate",
+    "ReportFormat",
+    "ReportStatus",
+    # Tool 1: Meta-analysis models
+    "MetaAnalysis",
+    "CoordinatorState",
+    "AgentExecution",
+    "MetaAnalysisStatus",
     # Association tables
     "project_papers",
     "project_researchers",

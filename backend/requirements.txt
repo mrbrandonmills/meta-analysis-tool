@@ -59,9 +59,18 @@ scikit-learn==1.4.0
 matplotlib==3.8.2
 seaborn==0.13.1
 
+# Document Generation (for APA report generation)
+python-docx==1.1.0
+reportlab==4.0.7
+Pillow==10.1.0
+
+# PDF Processing (REQUIRED for full-text screening)
+pdfplumber==0.10.3
+PyPDF2==3.0.1
+
 # NOTE: Other heavy dependencies removed for faster builds:
 # - chromadb (vector database - not used in MVP)
 # - sentence-transformers (ML models - not used in MVP)
 # - spacy, nltk (NLP - not critical for MVP)
-# - pymupdf, pdfplumber, pypdf (PDF processing - future feature)
+# - pymupdf (alternative PDF processor - pdfplumber is sufficient)
 # - pytest, black, flake8, mypy (development only - use requirements-test.txt)

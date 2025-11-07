@@ -51,6 +51,9 @@ class User(Base):
 
     # Relationships
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
+    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
+    report_templates = relationship("ReportTemplate", back_populates="creator", cascade="all, delete-orphan", lazy="dynamic")
+    meta_analyses = relationship("MetaAnalysis", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
     # api_keys = relationship("APIKey", back_populates="user")
 
     def __repr__(self):

@@ -1,0 +1,166 @@
+{
+  "summary": {
+    "total_tests": 16,
+    "passed": 13,
+    "failed": 2,
+    "errors": 0,
+    "warnings": 1,
+    "success_rate": 81.25
+  },
+  "tests": [
+    {
+      "category": "Health",
+      "test_name": "Basic Health Check",
+      "status": "PASS",
+      "details": {
+        "status": "healthy",
+        "response_time": 0.161337
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:42.115118"
+    },
+    {
+      "category": "Health",
+      "test_name": "Database Health",
+      "status": "PASS",
+      "details": {},
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:43.515594"
+    },
+    {
+      "category": "Health",
+      "test_name": "Redis Health",
+      "status": "PASS",
+      "details": {},
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:43.515617"
+    },
+    {
+      "category": "Health",
+      "test_name": "Celery Workers",
+      "status": "WARN",
+      "details": {
+        "celery_status": "degraded",
+        "message": "No workers available"
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:43.515625"
+    },
+    {
+      "category": "Health",
+      "test_name": "Root Endpoint",
+      "status": "PASS",
+      "details": {
+        "version": "0.1.0",
+        "status": "operational"
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:43.605498"
+    },
+    {
+      "category": "Documentation",
+      "test_name": "Swagger Docs",
+      "status": "PASS",
+      "details": {},
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:43.723402"
+    },
+    {
+      "category": "Auth",
+      "test_name": "User Registration",
+      "status": "PASS",
+      "details": {
+        "user_id": "ab463dcd-7701-4871-9178-f6a8266dfb0a",
+        "email": "qa_test_1762413523@example.com"
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:44.150221"
+    },
+    {
+      "category": "Auth",
+      "test_name": "Duplicate Registration Prevention",
+      "status": "PASS",
+      "details": {},
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:44.318379"
+    },
+    {
+      "category": "Auth",
+      "test_name": "User Login",
+      "status": "PASS",
+      "details": {
+        "token_type": "bearer"
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:44.552278"
+    },
+    {
+      "category": "Auth",
+      "test_name": "Invalid Login Prevention",
+      "status": "PASS",
+      "details": {},
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:44.842545"
+    },
+    {
+      "category": "Auth",
+      "test_name": "Get Current User",
+      "status": "PASS",
+      "details": {
+        "user_id": "ab463dcd-7701-4871-9178-f6a8266dfb0a"
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:44.998304"
+    },
+    {
+      "category": "Security",
+      "test_name": "Auth Required for Protected Endpoints",
+      "status": "PASS",
+      "details": {},
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:45.078108"
+    },
+    {
+      "category": "Auth",
+      "test_name": "Token Refresh",
+      "status": "FAIL",
+      "details": {
+        "status_code": 422
+      },
+      "severity": "HIGH",
+      "timestamp": "2025-11-05T23:18:45.184870"
+    },
+    {
+      "category": "Auth",
+      "test_name": "API Key Creation",
+      "status": "PASS",
+      "details": {
+        "key_id": "0c7dee56-a777-40ee-a5e1-a98103586bba",
+        "key_prefix": "sk_y31VY"
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:45.525894"
+    },
+    {
+      "category": "Auth",
+      "test_name": "List API Keys",
+      "status": "PASS",
+      "details": {
+        "count": 1
+      },
+      "severity": null,
+      "timestamp": "2025-11-05T23:18:45.665098"
+    },
+    {
+      "category": "Meta-Analysis",
+      "test_name": "Create Meta-Analysis",
+      "status": "FAIL",
+      "details": {
+        "status_code": 500,
+        "response": "{\"detail\":\"Anthropic API error in Coordinator: Error code: 404 - {'type': 'error', 'error': {'type': 'not_found_error', 'message': 'model: claude-3-5-sonnet-20241022'}, 'request_id': 'req_011CUrEDVp6F1K975CL375u7'}. Status code: 404\"}"
+      },
+      "severity": "CRITICAL",
+      "timestamp": "2025-11-05T23:18:46.394824"
+    }
+  ]
+}

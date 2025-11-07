@@ -78,6 +78,6 @@ EXPOSE ${PORT}
 
 # Run uvicorn directly (Railway will set PORT env var)
 # Note: Using shell form to allow $PORT variable substitution
-# Using 1 worker to maintain in-memory state (coordinators_by_id dict)
-# For production scaling, move to Redis or database-backed state management
-CMD /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --app-dir /app
+# Using 4 workers for horizontal scaling with database-backed state management
+# State is now persisted in PostgreSQL, allowing multiple workers to share state
+CMD /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4 --app-dir /app

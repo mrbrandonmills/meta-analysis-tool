@@ -1,22 +1,33 @@
 """Meta-analysis API endpoints."""
-from typing import List
+from typing import Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from loguru import logger
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from app.agents.base import AgentConfig, AgentOrchestrator
-from app.agents.specialized import CoordinatorAgent, SearchAgent, ScreeningAgent, QAAgent, CredibilityAgent
+from app.agents.specialized import (
+    CoordinatorAgent,
+    SearchAgent,
+    ScreeningAgent,
+    FullTextScreeningAgent,
+    QAAgent,
+    CredibilityAgent,
+)
+from app.db.session import get_db
+from app.models.paper import Paper
+from app.models.pdf_metadata import PDFMetadata, PDFDownloadStatus, FullTextExtraction
+from app.models.meta_analysis import MetaAnalysisStatus
+from app.services.pdf_download_service import PDFDownloadService
+from app.services.pdf_text_extractor import PDFTextExtractor
+from app.services.meta_analysis_service import MetaAnalysisService
 
 router = APIRouter()
 
 # Global orchestrator (in production, use dependency injection)
 orchestrator = AgentOrchestrator()
-
-# Store coordinators by ID for cross-request access
-# In production, use Redis or database
-coordinators_by_id: dict[str, CoordinatorAgent] = {}
 
 
 class MetaAnalysisRequest(BaseModel):
@@ -48,16 +59,50 @@ class QuestionRequest(BaseModel):
 
 
 @router.post("/meta-analysis/create", response_model=MetaAnalysisResponse)
-async def create_meta_analysis(request: MetaAnalysisRequest):
+async def create_meta_analysis(
+    request: MetaAnalysisRequest,
+    db: Session = Depends(get_db),
+):
     """Create a new meta-analysis.
 
     This endpoint:
-    1. Initializes the coordinator agent
-    2. Creates a workflow plan
-    3. Returns the plan for approval
+    1. Creates database record for meta-analysis
+    2. Initializes the coordinator agent
+    3. Creates a workflow plan
+    4. Persists coordinator state to database
+    5. Returns the plan for approval
     """
     try:
         logger.info(f"Creating meta-analysis: {request.topic}")
+
+        # Initialize service
+        service = MetaAnalysisService(db)
+
+        # TODO: Get user_id from authentication
+        # For now, create a dummy user if none exists
+        from app.models.user import User
+        user = db.query(User).first()
+        if not user:
+            # Create a default user for development
+            user = User(
+                email="default@example.com",
+                hashed_password="dummy",
+                full_name="Default User",
+            )
+            db.add(user)
+            db.flush()
+
+        # Create meta-analysis database record
+        meta_analysis = service.create_meta_analysis(
+            user_id=user.id,
+            research_question=request.research_question,
+            topic=request.topic,
+            inclusion_criteria=request.inclusion_criteria,
+            exclusion_criteria=request.exclusion_criteria,
+            databases=request.databases,
+            peer_review_only=request.peer_review_only,
+            expert_name=request.expert_name,
+        )
 
         # Initialize coordinator agent
         coordinator_config = AgentConfig(
@@ -68,16 +113,39 @@ async def create_meta_analysis(request: MetaAnalysisRequest):
         coordinator = CoordinatorAgent(coordinator_config)
         orchestrator.register_agent(coordinator)
 
-        # Store coordinator by ID for cross-request access
-        analysis_id = str(coordinator.id)
-        coordinators_by_id[analysis_id] = coordinator
-        logger.info(f"Stored coordinator with ID: {analysis_id}")
-
         # Process the request to create workflow
         result = await coordinator.process(request.model_dump())
 
+        # Save coordinator state to database
+        service.save_coordinator_state(
+            analysis_id=meta_analysis.id,
+            coordinator=coordinator,
+            workflow_plan=result,
+        )
+
+        # Update status to workflow_created
+        service.update_meta_analysis_status(
+            analysis_id=meta_analysis.id,
+            status=MetaAnalysisStatus.WORKFLOW_CREATED,
+        )
+
+        # Log coordinator execution
+        service.log_agent_execution(
+            analysis_id=meta_analysis.id,
+            agent_name=coordinator.config.name,
+            agent_role="coordinator",
+            agent_id=coordinator.id,
+            input_data=request.model_dump(),
+            output_data=result,
+            status="success",
+        )
+
+        db.commit()
+
+        logger.info(f"Created and persisted meta-analysis {meta_analysis.id}")
+
         return MetaAnalysisResponse(
-            id=analysis_id,
+            id=str(meta_analysis.id),
             status="workflow_created",
             message="Meta-analysis workflow created successfully",
             workflow=result,
@@ -85,29 +153,56 @@ async def create_meta_analysis(request: MetaAnalysisRequest):
 
     except Exception as e:
         logger.error(f"Error creating meta-analysis: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/meta-analysis/execute/{analysis_id}")
-async def execute_meta_analysis(analysis_id: str):
+async def execute_meta_analysis(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+):
     """Execute a meta-analysis workflow.
 
     This endpoint:
-    1. Runs the search agent
-    2. Runs the screening agent
-    3. Returns preliminary results
+    1. Retrieves coordinator state from database
+    2. Runs the search agent
+    3. Runs the screening agent
+    4. Persists all agent executions
+    5. Returns preliminary results
     """
     try:
         logger.info(f"Executing meta-analysis: {analysis_id}")
 
-        # Get coordinator by analysis_id
-        coordinator = coordinators_by_id.get(analysis_id)
-        if not coordinator:
-            logger.error(f"Coordinator not found for analysis_id: {analysis_id}")
+        # Initialize service
+        service = MetaAnalysisService(db)
+
+        # Get meta-analysis from database
+        analysis_uuid = UUID(analysis_id)
+        meta_analysis = service.get_meta_analysis(analysis_uuid)
+        if not meta_analysis:
+            logger.error(f"Meta-analysis not found: {analysis_id}")
             raise HTTPException(
                 status_code=404,
                 detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
             )
+
+        # Restore coordinator from database
+        coordinator_config = AgentConfig(
+            name="Coordinator",
+            role="coordinator",  # type: ignore
+            expert_profile=meta_analysis.expert_name,
+        )
+        coordinator = service.restore_coordinator(analysis_uuid, coordinator_config)
+        if not coordinator:
+            logger.error(f"Coordinator state not found for analysis_id: {analysis_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Coordinator state not found. Analysis ID: {analysis_id}"
+            )
+
+        # Update status to in_progress
+        service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.IN_PROGRESS)
 
         # Initialize search agent
         search_config = AgentConfig(name="SearchAgent", role="search")  # type: ignore
@@ -120,11 +215,22 @@ async def execute_meta_analysis(analysis_id: str):
 
         # Execute search
         search_input = {
-            "research_question": "Effects of mindfulness on anxiety",  # From coordinator
-            "search_terms": ["mindfulness", "anxiety", "RCT"],
-            "databases": ["pubmed"],
+            "research_question": meta_analysis.research_question,
+            "search_terms": ["mindfulness", "anxiety", "RCT"],  # TODO: Extract from workflow
+            "databases": meta_analysis.databases or ["pubmed"],
         }
         search_results = await search_agent.process(search_input)
+
+        # Log search agent execution
+        service.log_agent_execution(
+            analysis_id=analysis_uuid,
+            agent_name=search_agent.config.name,
+            agent_role="search",
+            agent_id=search_agent.id,
+            input_data=search_input,
+            output_data=search_results,
+            status="success",
+        )
 
         # Initialize screening agent
         screening_config = AgentConfig(name="ScreeningAgent", role="screening")  # type: ignore
@@ -134,13 +240,13 @@ async def execute_meta_analysis(analysis_id: str):
         # Execute screening
         screening_input = {
             "studies": search_results["studies"],
-            "inclusion_criteria": [
+            "inclusion_criteria": meta_analysis.inclusion_criteria or [
                 "Randomized controlled trial",
                 "Adult population (18+)",
                 "Mindfulness-based intervention",
                 "Anxiety as outcome measure",
             ],
-            "exclusion_criteria": [
+            "exclusion_criteria": meta_analysis.exclusion_criteria or [
                 "Non-English language",
                 "Qualitative studies",
                 "Case studies",
@@ -148,6 +254,17 @@ async def execute_meta_analysis(analysis_id: str):
             "screening_level": "title_abstract",
         }
         screening_results = await screening_agent.process(screening_input)
+
+        # Log screening agent execution
+        service.log_agent_execution(
+            analysis_id=analysis_uuid,
+            agent_name=screening_agent.config.name,
+            agent_role="screening",
+            agent_id=screening_agent.id,
+            input_data=screening_input,
+            output_data=screening_results,
+            status="success",
+        )
 
         # Initialize credibility agent
         credibility_config = AgentConfig(name="CredibilityAgent", role="quality_assessment")  # type: ignore
@@ -157,9 +274,29 @@ async def execute_meta_analysis(analysis_id: str):
         # Evaluate credibility of included studies
         credibility_input = {
             "studies": screening_results["included"],
-            "require_peer_review": False,  # Will be configurable
+            "require_peer_review": meta_analysis.peer_review_only == "true",
         }
         credibility_results = await credibility_agent.process(credibility_input)
+
+        # Log credibility agent execution
+        service.log_agent_execution(
+            analysis_id=analysis_uuid,
+            agent_name=credibility_agent.config.name,
+            agent_role="quality_assessment",
+            agent_id=credibility_agent.id,
+            input_data=credibility_input,
+            output_data=credibility_results,
+            status="success",
+        )
+
+        # Update coordinator state with progress
+        service.save_coordinator_state(
+            analysis_id=analysis_uuid,
+            coordinator=coordinator,
+        )
+
+        # Commit all changes
+        db.commit()
 
         return {
             "analysis_id": analysis_id,
@@ -188,26 +325,42 @@ async def execute_meta_analysis(analysis_id: str):
 
     except Exception as e:
         logger.error(f"Error executing meta-analysis: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/meta-analysis/status/{analysis_id}")
-async def get_status(analysis_id: str):
-    """Get the status of a meta-analysis."""
-    # Get coordinator by analysis_id
-    coordinator = coordinators_by_id.get(analysis_id)
-    if not coordinator:
-        logger.error(f"Coordinator not found for analysis_id: {analysis_id}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
-        )
+async def get_status(analysis_id: str, db: Session = Depends(get_db)):
+    """Get the status of a meta-analysis from database."""
+    try:
+        service = MetaAnalysisService(db)
 
-    return {
-        "id": analysis_id,
-        "status": coordinator.status,
-        "decisions": len(coordinator.decisions),
-    }
+        # Get meta-analysis from database
+        analysis_uuid = UUID(analysis_id)
+        meta_analysis = service.get_meta_analysis(analysis_uuid)
+        if not meta_analysis:
+            logger.error(f"Meta-analysis not found: {analysis_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
+            )
+
+        # Get coordinator state
+        coordinator_state = service.get_coordinator_state(analysis_uuid)
+
+        return {
+            "id": analysis_id,
+            "status": meta_analysis.status.value,
+            "decisions": len(coordinator_state.decisions) if coordinator_state else 0,
+            "created_at": meta_analysis.created_at.isoformat(),
+            "updated_at": meta_analysis.updated_at.isoformat(),
+        }
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid analysis ID format")
+    except Exception as e:
+        logger.error(f"Error getting meta-analysis status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/meta-analysis/audit/{analysis_id}")
@@ -279,3 +432,444 @@ async def get_report(analysis_id: str):
             "References",
         ],
     }
+
+
+# ============================================================================
+# PDF DOWNLOAD AND FULL-TEXT ANALYSIS ENDPOINTS
+# ============================================================================
+
+
+class PDFDownloadRequest(BaseModel):
+    """Request to download PDFs for studies."""
+
+    paper_ids: Optional[List[str]] = Field(None, description="Specific paper IDs to download. If not provided, downloads all included studies.")
+    max_concurrent: int = Field(default=5, ge=1, le=10, description="Maximum concurrent downloads")
+
+
+class PDFDownloadResponse(BaseModel):
+    """Response for PDF download request."""
+
+    analysis_id: str
+    status: str
+    total: int
+    success: int
+    failed: int
+    paywall: int
+    already_downloaded: int
+    message: str
+
+
+class PDFStatusResponse(BaseModel):
+    """Response for PDF status check."""
+
+    analysis_id: str
+    total_papers: int
+    downloaded: int
+    pending: int
+    failed: int
+    paywall: int
+    extraction_completed: int
+    extraction_pending: int
+    download_stats: List[Dict]
+
+
+class FullTextScreeningRequest(BaseModel):
+    """Request for full-text screening."""
+
+    inclusion_criteria: List[str] = Field(..., description="Inclusion criteria")
+    exclusion_criteria: List[str] = Field(..., description="Exclusion criteria")
+    study_type: Optional[str] = Field(None, description="Expected study type (e.g., 'RCT')")
+    outcome_measures: List[str] = Field(default_factory=list, description="Expected outcome measures")
+
+
+class FullTextScreeningResponse(BaseModel):
+    """Response for full-text screening."""
+
+    analysis_id: str
+    total_screened: int
+    included: int
+    excluded: int
+    uncertain: int
+    quality_summary: Dict
+    message: str
+
+
+@router.post("/meta-analysis/download-pdfs/{analysis_id}", response_model=PDFDownloadResponse)
+async def download_pdfs(
+    analysis_id: str,
+    request: PDFDownloadRequest,
+    db: Session = Depends(get_db)
+):
+    """Download PDFs for studies in a meta-analysis.
+
+    This endpoint:
+    1. Retrieves included studies from the analysis
+    2. Downloads PDFs from multiple sources (PMC, arXiv, etc.)
+    3. Tracks download status and errors
+    4. Returns statistics
+
+    Note: For large batches, consider using the background task endpoint.
+    """
+    try:
+        logger.info(f"Starting PDF download for analysis {analysis_id}")
+
+        # Get papers to download
+        if request.paper_ids:
+            papers = db.query(Paper).filter(Paper.id.in_(request.paper_ids)).all()
+        else:
+            # Get all papers for this analysis (simplified - in production, link to Project)
+            # For now, get papers that don't have PDFs yet
+            papers = (
+                db.query(Paper)
+                .outerjoin(PDFMetadata, Paper.id == PDFMetadata.paper_id)
+                .filter(
+                    (PDFMetadata.id == None) |
+                    (PDFMetadata.download_status != PDFDownloadStatus.SUCCESS)
+                )
+                .limit(100)  # Safety limit
+                .all()
+            )
+
+        if not papers:
+            return PDFDownloadResponse(
+                analysis_id=analysis_id,
+                status="no_papers",
+                total=0,
+                success=0,
+                failed=0,
+                paywall=0,
+                already_downloaded=0,
+                message="No papers found to download"
+            )
+
+        # Initialize download service
+        download_service = PDFDownloadService(db)
+
+        # Download PDFs
+        stats = download_service.batch_download(papers, max_concurrent=request.max_concurrent)
+
+        return PDFDownloadResponse(
+            analysis_id=analysis_id,
+            status="completed",
+            total=stats["total"],
+            success=stats["success"],
+            failed=stats["failed"],
+            paywall=stats["paywall"],
+            already_downloaded=stats["already_downloaded"],
+            message=f"Downloaded {stats['success']} of {stats['total']} PDFs"
+        )
+
+    except Exception as e:
+        logger.error(f"Error downloading PDFs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/meta-analysis/pdf-status/{analysis_id}", response_model=PDFStatusResponse)
+async def get_pdf_status(analysis_id: str, db: Session = Depends(get_db)):
+    """Get PDF download and extraction status for an analysis.
+
+    Returns statistics about:
+    - Total papers in analysis
+    - Download success/failure/pending
+    - Text extraction status
+    - Individual paper statuses
+    """
+    try:
+        logger.info(f"Checking PDF status for analysis {analysis_id}")
+
+        # Get all PDF metadata (simplified - should filter by analysis)
+        pdf_metadata_list = db.query(PDFMetadata).all()
+
+        # Calculate statistics
+        total = len(pdf_metadata_list)
+        downloaded = sum(
+            1 for m in pdf_metadata_list
+            if m.download_status == PDFDownloadStatus.SUCCESS
+        )
+        pending = sum(
+            1 for m in pdf_metadata_list
+            if m.download_status == PDFDownloadStatus.PENDING
+        )
+        failed = sum(
+            1 for m in pdf_metadata_list
+            if m.download_status == PDFDownloadStatus.FAILED
+        )
+        paywall = sum(
+            1 for m in pdf_metadata_list
+            if m.download_status == PDFDownloadStatus.PAYWALL
+        )
+        extraction_completed = sum(
+            1 for m in pdf_metadata_list
+            if m.extraction_status == "completed"
+        )
+        extraction_pending = sum(
+            1 for m in pdf_metadata_list
+            if m.extraction_status == "pending"
+        )
+
+        # Get detailed stats per paper
+        download_stats = []
+        for metadata in pdf_metadata_list[:50]:  # Limit to first 50
+            download_stats.append({
+                "paper_id": str(metadata.paper_id),
+                "download_status": metadata.download_status.value,
+                "extraction_status": metadata.extraction_status,
+                "pdf_source": metadata.pdf_source.value if metadata.pdf_source else None,
+                "file_size_bytes": metadata.file_size_bytes,
+                "page_count": metadata.page_count,
+            })
+
+        return PDFStatusResponse(
+            analysis_id=analysis_id,
+            total_papers=total,
+            downloaded=downloaded,
+            pending=pending,
+            failed=failed,
+            paywall=paywall,
+            extraction_completed=extraction_completed,
+            extraction_pending=extraction_pending,
+            download_stats=download_stats,
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting PDF status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/meta-analysis/extract-text/{analysis_id}")
+async def extract_text(analysis_id: str, db: Session = Depends(get_db)):
+    """Extract text from downloaded PDFs.
+
+    This endpoint:
+    1. Finds all successfully downloaded PDFs
+    2. Extracts text and detects sections
+    3. Stores structured text in database
+    4. Returns extraction statistics
+    """
+    try:
+        logger.info(f"Starting text extraction for analysis {analysis_id}")
+
+        # Get PDFs ready for extraction
+        pdf_metadata_list = (
+            db.query(PDFMetadata)
+            .filter(
+                PDFMetadata.download_status == PDFDownloadStatus.SUCCESS,
+                PDFMetadata.extraction_status.in_(["pending", "failed"])
+            )
+            .all()
+        )
+
+        if not pdf_metadata_list:
+            return {
+                "analysis_id": analysis_id,
+                "status": "no_pdfs",
+                "message": "No PDFs available for extraction"
+            }
+
+        # Initialize extraction service
+        extractor = PDFTextExtractor(db)
+
+        # Extract text from PDFs
+        stats = extractor.batch_extract(pdf_metadata_list)
+
+        return {
+            "analysis_id": analysis_id,
+            "status": "completed",
+            "total": stats["total"],
+            "success": stats["success"],
+            "failed": stats["failed"],
+            "requires_ocr": stats["requires_ocr"],
+            "message": f"Extracted text from {stats['success']} of {stats['total']} PDFs"
+        }
+
+    except Exception as e:
+        logger.error(f"Error extracting text: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/meta-analysis/full-text-screen/{analysis_id}", response_model=FullTextScreeningResponse)
+async def full_text_screen(
+    analysis_id: str,
+    request: FullTextScreeningRequest,
+    db: Session = Depends(get_db)
+):
+    """Perform full-text screening using extracted text.
+
+    This endpoint:
+    1. Retrieves extracted full texts
+    2. Applies FullTextScreeningAgent for detailed analysis
+    3. Extracts PICO components and study quality indicators
+    4. Stores screening results
+    5. Returns comprehensive screening statistics
+    """
+    try:
+        logger.info(f"Starting full-text screening for analysis {analysis_id}")
+
+        # Get all full-text extractions
+        extractions = (
+            db.query(FullTextExtraction)
+            .join(PDFMetadata)
+            .filter(PDFMetadata.extraction_status == "completed")
+            .all()
+        )
+
+        if not extractions:
+            raise HTTPException(
+                status_code=400,
+                detail="No full-text extractions available. Please extract text first."
+            )
+
+        # Initialize full-text screening agent
+        agent_config = AgentConfig(
+            name="FullTextScreeningAgent",
+            role="screening"  # type: ignore
+        )
+        screening_agent = FullTextScreeningAgent(agent_config)
+        orchestrator.register_agent(screening_agent)
+
+        # Perform screening
+        screening_input = {
+            "extractions": extractions,
+            "inclusion_criteria": request.inclusion_criteria,
+            "exclusion_criteria": request.exclusion_criteria,
+            "study_type": request.study_type,
+            "outcome_measures": request.outcome_measures,
+        }
+
+        results = await screening_agent.process(screening_input)
+
+        # Store screening results in database
+        for study in results["included"] + results["excluded"] + results["uncertain"]:
+            extraction = study  # Assuming study is the extraction object
+            result = study.get("screening_result", {})
+
+            screening_record = FullTextScreening(
+                full_text_extraction_id=extraction.id,
+                paper_id=extraction.pdf_metadata.paper_id,
+                decision=result["decision"],
+                confidence=result["confidence"],
+                reasoning=result["reasoning"],
+                pico_extraction=result.get("pico_extraction", {}),
+                study_quality_indicators=result.get("study_quality_indicators", {}),
+                data_extraction_preview=result.get("data_extraction_preview", {}),
+                inclusion_criteria_met=result.get("inclusion_criteria_met", []),
+                exclusion_criteria_violated=result.get("exclusion_criteria_violated", []),
+                needs_human_review=result["needs_human_review"],
+                has_concerns=len(result.get("concerns", [])) > 0,
+                concern_details=result.get("concerns", []),
+                screening_agent_id=str(screening_agent.id),
+            )
+            db.add(screening_record)
+
+        db.commit()
+
+        return FullTextScreeningResponse(
+            analysis_id=analysis_id,
+            total_screened=results["total_screened"],
+            included=len(results["included"]),
+            excluded=len(results["excluded"]),
+            uncertain=len(results["uncertain"]),
+            quality_summary=results["quality_summary"],
+            message=f"Screened {results['total_screened']} full-text studies"
+        )
+
+    except Exception as e:
+        logger.error(f"Error in full-text screening: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/meta-analysis/study/{study_id}/full-text")
+async def get_study_full_text(study_id: str, db: Session = Depends(get_db)):
+    """Get full-text extraction and screening results for a study.
+
+    Returns:
+    - Extracted text with sections
+    - Statistics and study characteristics
+    - Screening decision and reasoning
+    - PICO components
+    - Quality indicators
+    """
+    try:
+        # Get paper
+        paper = db.query(Paper).filter(Paper.id == study_id).first()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Study not found")
+
+        # Get PDF metadata
+        pdf_metadata = (
+            db.query(PDFMetadata)
+            .filter(PDFMetadata.paper_id == study_id)
+            .first()
+        )
+
+        if not pdf_metadata:
+            return {
+                "study_id": study_id,
+                "status": "no_pdf",
+                "message": "No PDF downloaded for this study"
+            }
+
+        # Get extraction
+        extraction = (
+            db.query(FullTextExtraction)
+            .filter(FullTextExtraction.pdf_metadata_id == pdf_metadata.id)
+            .first()
+        )
+
+        if not extraction:
+            return {
+                "study_id": study_id,
+                "status": "not_extracted",
+                "pdf_status": pdf_metadata.download_status.value,
+                "message": "Text not yet extracted from PDF"
+            }
+
+        # Get screening results
+        screening = (
+            db.query(FullTextScreening)
+            .filter(FullTextScreening.full_text_extraction_id == extraction.id)
+            .first()
+        )
+
+        return {
+            "study_id": study_id,
+            "paper": {
+                "title": paper.title,
+                "authors": paper.authors,
+                "year": paper.year,
+                "journal": paper.journal,
+                "doi": paper.doi,
+            },
+            "pdf_metadata": {
+                "download_status": pdf_metadata.download_status.value,
+                "pdf_source": pdf_metadata.pdf_source.value if pdf_metadata.pdf_source else None,
+                "page_count": pdf_metadata.page_count,
+                "file_size_bytes": pdf_metadata.file_size_bytes,
+            },
+            "extraction": {
+                "word_count": extraction.word_count,
+                "sections": extraction.sections,
+                "tables_detected": extraction.tables_detected,
+                "figures_detected": extraction.figures_detected,
+                "references_count": extraction.references_count,
+                "extraction_quality": extraction.extraction_quality,
+                "statistics_found": extraction.statistics_found,
+                "study_design_mentions": extraction.study_design_mentions,
+                "intervention_mentions": extraction.intervention_mentions,
+                "outcome_measures": extraction.outcome_measures,
+            },
+            "screening": {
+                "decision": screening.decision if screening else None,
+                "confidence": screening.confidence if screening else None,
+                "reasoning": screening.reasoning if screening else None,
+                "pico_extraction": screening.pico_extraction if screening else None,
+                "study_quality_indicators": screening.study_quality_indicators if screening else None,
+                "data_extraction_preview": screening.data_extraction_preview if screening else None,
+                "needs_human_review": screening.needs_human_review if screening else None,
+                "concerns": screening.concern_details if screening else None,
+            } if screening else None,
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting full text: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

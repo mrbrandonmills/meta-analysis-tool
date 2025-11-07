@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     downloads_dir: str = "./downloads"
 
+    # PDF Processing Configuration
+    pdf_storage_dir: str = "./downloads/pdfs"
+    pdf_max_file_size_mb: int = 50
+    pdf_download_timeout_seconds: int = 30
+    pdf_rate_limit_per_second: float = 3.0
+    pdf_max_retries: int = 3
+    pdf_cleanup_days: int = 30
+
     # CORS
     allowed_origins: str = "http://localhost:3000,http://localhost:3001"
 

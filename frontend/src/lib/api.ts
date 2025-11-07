@@ -277,47 +277,167 @@ export const projectsApi = {
 // META-ANALYSIS API
 // ==================
 
+// Request/Response Types
+export interface MetaAnalysisRequest {
+  research_question: string;
+  topic: string;
+  inclusion_criteria?: string[];
+  exclusion_criteria?: string[];
+  databases?: string[];
+  peer_review_only?: boolean;
+  expert_name?: string | null;
+}
+
+export interface MetaAnalysisResponse {
+  id: string;
+  status: string;
+  message: string;
+  workflow: {
+    research_question: string;
+    workflow_steps: string[];
+    timeline_days: number;
+    resources_required: string[];
+    expected_outcomes: string[];
+  };
+}
+
+export interface ExecuteResponse {
+  analysis_id: string;
+  status: string;
+  search_results: {
+    total_found: number;
+    databases: string[];
+  };
+  screening_results: {
+    total_screened: number;
+    included: number;
+    excluded: number;
+    uncertain: number;
+  };
+  credibility_results: {
+    total_evaluated: number;
+    breakdown: {
+      high_credibility: number;
+      medium_credibility: number;
+      low_credibility: number;
+      preprints: number;
+    };
+    studies_with_scores: Array<{
+      title: string;
+      credibility_score: number;
+      is_peer_reviewed: boolean;
+      venue_type: string;
+      red_flags: string[];
+    }>;
+  };
+  next_steps: string[];
+}
+
+export interface StatusResponse {
+  id: string;
+  status: string;
+  decisions: number;
+}
+
+export interface AuditTrailEntry {
+  timestamp: string;
+  agent_id: string;
+  agent_name: string;
+  agent_role: string;
+  action: string;
+  decision?: any;
+  input_data?: any;
+  output_data?: any;
+  reasoning?: string;
+  confidence?: number;
+}
+
+export interface AuditResponse {
+  entries: AuditTrailEntry[];
+}
+
+export interface QARequest {
+  question: string;
+  meta_analysis_id?: string | null;
+}
+
+export interface QAResponse {
+  question: string;
+  answer: string;
+  confidence: number;
+  sources: string[];
+  follow_up_suggestions: string[];
+}
+
+export interface ReportResponse {
+  id: string;
+  status: string;
+  format: string;
+  sections: string[];
+}
+
 export const metaAnalysisApi = {
-  search: async (projectId: string, searchParams: any) => {
+  /**
+   * Create a new meta-analysis.
+   * This initializes the coordinator agent and creates a workflow plan.
+   */
+  createMetaAnalysis: async (
+    data: MetaAnalysisRequest
+  ): Promise<MetaAnalysisResponse> => {
+    const response = await apiClient.post('/meta-analysis/create', data);
+    return response.data;
+  },
+
+  /**
+   * Execute a meta-analysis workflow.
+   * This runs the search, screening, and credibility assessment agents.
+   */
+  executeMetaAnalysis: async (analysisId: string): Promise<ExecuteResponse> => {
     const response = await apiClient.post(
-      `/meta-analysis/${projectId}/search`,
-      searchParams
+      `/meta-analysis/execute/${analysisId}`
     );
     return response.data;
   },
 
-  screen: async (projectId: string) => {
-    const response = await apiClient.post(
-      `/meta-analysis/${projectId}/screen`
-    );
+  /**
+   * Get the current status of a meta-analysis.
+   */
+  getStatus: async (analysisId: string): Promise<StatusResponse> => {
+    const response = await apiClient.get(`/meta-analysis/status/${analysisId}`);
     return response.data;
   },
 
-  assessCredibility: async (projectId: string) => {
-    const response = await apiClient.post(
-      `/meta-analysis/${projectId}/credibility`
-    );
+  /**
+   * Get the complete audit trail for a meta-analysis.
+   * This shows all agent decisions and reasoning.
+   */
+  getAuditTrail: async (analysisId: string): Promise<AuditResponse> => {
+    const response = await apiClient.get(`/meta-analysis/audit/${analysisId}`);
     return response.data;
   },
 
-  extractData: async (projectId: string) => {
-    const response = await apiClient.post(
-      `/meta-analysis/${projectId}/extract`
-    );
+  /**
+   * Ask a question about a meta-analysis.
+   * Uses the Q&A agent to answer questions about the process, methodology, or results.
+   */
+  askQuestion: async (
+    question: string,
+    analysisId?: string | null
+  ): Promise<QAResponse> => {
+    const requestData: QARequest = {
+      question,
+      meta_analysis_id: analysisId || null,
+    };
+    const response = await apiClient.post('/meta-analysis/ask', requestData);
     return response.data;
   },
 
-  analyze: async (projectId: string) => {
-    const response = await apiClient.post(
-      `/meta-analysis/${projectId}/analyze`
-    );
-    return response.data;
-  },
-
-  getPrismaFlow: async (projectId: string) => {
-    const response = await apiClient.get(
-      `/meta-analysis/${projectId}/prisma`
-    );
+  /**
+   * Get the final report for a meta-analysis.
+   * This generates an APA-formatted report with all results.
+   */
+  getReport: async (analysisId: string): Promise<ReportResponse> => {
+    const response = await apiClient.get(`/meta-analysis/report/${analysisId}`);
     return response.data;
   },
 };

@@ -1,0 +1,59 @@
+{
+  "audit_date": "2025-11-05T23:20:08.445719",
+  "target": "https://meta-analysis-tool-production.up.railway.app",
+  "summary": {
+    "total_findings": 2,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "security_score": 85
+  },
+  "findings": [
+    {
+      "id": "SEC-001",
+      "severity": "HIGH",
+      "category": "XSS",
+      "title": "Stored XSS in User Profile",
+      "description": "XSS payload stored in database: <script>alert('XSS')</script>",
+      "test_details": {
+        "payload": "<script>alert('XSS')</script>",
+        "response": {
+          "email": "xss_test_1762413604@example.com",
+          "full_name": "<script>alert('XSS')</script>",
+          "institution": "Test",
+          "id": "439ca145-a11b-4e20-9760-0527bc405992",
+          "role": "researcher",
+          "is_active": true,
+          "is_verified": false,
+          "created_at": "2025-11-06T07:20:05.028404",
+          "last_login": null
+        }
+      },
+      "impact": "Attacker could execute JavaScript in victim's browser",
+      "timestamp": "2025-11-05T23:20:05.081073"
+    },
+    {
+      "id": "SEC-002",
+      "severity": "MEDIUM",
+      "category": "Rate Limiting",
+      "title": "Weak or Missing Rate Limiting",
+      "description": "System did not enforce rate limits after 25 requests",
+      "test_details": {
+        "requests_sent": 25
+      },
+      "impact": "Attackers can perform DoS attacks or brute force without throttling",
+      "timestamp": "2025-11-05T23:20:07.396235"
+    }
+  ],
+  "recommendations": [
+    "Fix all CRITICAL issues immediately",
+    "Address HIGH severity issues before production release",
+    "Implement security monitoring and logging",
+    "Conduct regular security audits",
+    "Keep all dependencies updated",
+    "Implement Web Application Firewall (WAF)",
+    "Add security headers (CSP, X-Frame-Options, etc.)",
+    "Conduct penetration testing before major releases"
+  ]
+}

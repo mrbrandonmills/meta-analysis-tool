@@ -1,0 +1,310 @@
+# Agent Enhancement Configuration
+# Configuration options for SearchAgentV2, ScreeningAgentV2, and CredibilityAgentV2
+
+# ============================================================================
+# SEARCH AGENT V2 CONFIGURATION
+# ============================================================================
+search_agent:
+  # Default databases to search (can be overridden at runtime)
+  default_databases:
+    - pubmed
+    - europepmc
+    # - arxiv  # Uncomment for preprint searches
+    # - core   # Uncomment for open access searches
+
+  # Query building options
+  query_building:
+    # Boolean operator for combining search terms
+    default_boolean_operator: "AND"  # Options: AND, OR
+
+    # Enable automatic synonym expansion
+    expand_synonyms: true
+
+    # Enable MeSH term extraction and usage (PubMed)
+    use_mesh_terms: true
+
+    # Maximum results per database
+    max_results_per_database: 100
+
+  # Caching options
+  caching:
+    # Enable result caching
+    enabled: true
+
+    # Cache duration in seconds (3600 = 1 hour)
+    duration: 3600
+
+  # Rate limiting (requests per second)
+  rate_limits:
+    pubmed: 3.0      # PubMed E-utilities limit
+    arxiv: 10.0      # More lenient
+    europepmc: 10.0
+    core: 10.0
+
+  # Retry configuration
+  retry:
+    max_attempts: 3
+    initial_delay: 1.0  # seconds
+    backoff_factor: 2.0
+
+  # Deduplication options
+  deduplication:
+    # Use DOI for deduplication
+    use_doi: true
+
+    # Use PMID for deduplication
+    use_pmid: true
+
+    # Use fuzzy title matching
+    use_title_similarity: true
+
+    # Title similarity threshold (0.0-1.0)
+    title_similarity_threshold: 0.9
+
+  # Date range filtering (optional)
+  # date_range:
+  #   mindate: "2013/01/01"
+  #   maxdate: "2024/12/31"
+
+  # Publication type filters (PubMed)
+  # publication_types:
+  #   - "Randomized Controlled Trial"
+  #   - "Clinical Trial"
+  #   - "Meta-Analysis"
+
+
+# ============================================================================
+# SCREENING AGENT V2 CONFIGURATION
+# ============================================================================
+screening_agent:
+  # ML-based relevance scoring
+  ml_scoring:
+    # Enable ML relevance scoring
+    enabled: true
+
+    # TF-IDF vectorizer settings
+    max_features: 500
+    ngram_range: [1, 2]  # Unigrams and bigrams
+    min_df: 1
+
+  # Multi-stage screening
+  screening_stages:
+    # Stage 1: Title screening
+    title:
+      enabled: true
+      conservative: true  # When in doubt, include
+
+    # Stage 2: Abstract screening
+    abstract:
+      enabled: true
+      use_ml_scores: true
+      confidence_threshold: 0.7
+
+    # Stage 3: Full-text screening
+    full_text:
+      enabled: true
+      use_ml_scores: true
+      confidence_threshold: 0.8
+
+  # Batch processing
+  batch_processing:
+    # Number of studies to process in parallel
+    batch_size: 10
+
+  # Decision thresholds
+  thresholds:
+    # Minimum confidence for inclusion (0.0-1.0)
+    confidence_threshold: 0.7
+
+    # ML net score threshold (inclusion_score - exclusion_score)
+    ml_net_score_threshold: 0.0  # Positive = likely include
+
+  # Inter-rater reliability
+  inter_rater:
+    # Target Cohen's kappa for reliability
+    target_kappa: 0.8
+
+    # Enable conflict resolution workflow
+    enable_conflict_resolution: true
+
+  # PRISMA reporting
+  prisma:
+    # Generate PRISMA flow diagram data
+    generate_flow_data: true
+
+    # Categorize exclusion reasons
+    categorize_exclusions: true
+
+
+# ============================================================================
+# CREDIBILITY AGENT V2 CONFIGURATION
+# ============================================================================
+credibility_agent:
+  # Quality assessment frameworks
+  assessment_frameworks:
+    # Cochrane Risk of Bias tool (for RCTs)
+    cochrane_rob:
+      enabled: true
+      version: "2.0"  # RoB 2.0
+
+    # GRADE quality assessment
+    grade:
+      enabled: true
+      assess_all_domains: true  # bias, inconsistency, indirectness, imprecision, publication bias
+
+    # Study design hierarchy
+    evidence_hierarchy:
+      enabled: true
+
+  # Peer review requirements
+  peer_review:
+    # Require peer-reviewed publications
+    require_peer_reviewed: false
+
+    # Detect preprints
+    detect_preprints: true
+
+    # Preprint servers to detect
+    preprint_servers:
+      - arxiv
+      - biorxiv
+      - medrxiv
+      - chemrxiv
+      - psyarxiv
+      - ssrn
+
+  # Retraction checking
+  retraction_checking:
+    # Enable retraction checking
+    enabled: true
+
+    # Check PubMed for retraction notices
+    check_pubmed: true
+
+    # Cache retraction results
+    cache_results: true
+
+  # Citation analysis
+  citation_analysis:
+    # Fetch citation counts
+    enabled: false  # Set to true to enable (requires API calls)
+
+    # APIs to use (in order of preference)
+    apis:
+      - opencitations  # Free, no authentication
+      - crossref      # Free, no authentication
+      # - semantic_scholar  # Requires API key
+      # - scopus            # Requires API key
+
+  # Journal quality assessment
+  journal_quality:
+    # Enable journal impact factor checking
+    enabled: false  # Set to true to enable (requires API/data)
+
+    # Impact factor thresholds
+    thresholds:
+      very_high: 10.0
+      high: 5.0
+      medium: 2.0
+      low: 0.0
+
+  # Credibility filtering
+  filtering:
+    # Minimum credibility level for inclusion
+    minimum_credibility: "low"  # Options: high, medium, low, very_low
+
+    # Exclude retracted papers
+    exclude_retracted: true
+
+  # Sorting and ranking
+  sorting:
+    # Primary sort key
+    primary: "credibility_level"  # Options: credibility_level, quality_score, evidence_level
+
+    # Secondary sort key
+    secondary: "quality_score"
+
+    # Sort order
+    order: "descending"  # Higher quality first
+
+
+# ============================================================================
+# GENERAL AGENT CONFIGURATION
+# ============================================================================
+general:
+  # Claude AI model configuration
+  ai_model:
+    model_name: "claude-sonnet-4-5-20250929"
+    temperature: 0.3
+    max_tokens: 4096
+
+  # Logging
+  logging:
+    level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+    log_ai_prompts: false  # Log full AI prompts (for debugging)
+    log_ai_responses: false  # Log full AI responses (for debugging)
+
+  # Performance
+  performance:
+    # Enable parallel processing where possible
+    parallel_processing: true
+
+    # Maximum concurrent API calls
+    max_concurrent_calls: 5
+
+  # Cost optimization
+  cost_optimization:
+    # Use caching aggressively to reduce API calls
+    aggressive_caching: true
+
+    # Batch similar requests
+    batch_similar_requests: true
+
+
+# ============================================================================
+# EXAMPLE USAGE CONFIGURATIONS
+# ============================================================================
+
+# Preset: Fast Search (for exploratory analysis)
+presets:
+  fast_search:
+    search_agent:
+      default_databases: [pubmed]
+      max_results_per_database: 50
+      expand_synonyms: false
+    screening_agent:
+      ml_scoring.enabled: true
+      thresholds.confidence_threshold: 0.6
+    credibility_agent:
+      assessment_frameworks.cochrane_rob.enabled: false
+      filtering.minimum_credibility: "low"
+
+  # Preset: Comprehensive Search (for systematic review)
+  comprehensive_search:
+    search_agent:
+      default_databases: [pubmed, europepmc, core]
+      max_results_per_database: 200
+      expand_synonyms: true
+      use_mesh_terms: true
+    screening_agent:
+      ml_scoring.enabled: true
+      thresholds.confidence_threshold: 0.8
+      inter_rater.enable_conflict_resolution: true
+    credibility_agent:
+      assessment_frameworks.cochrane_rob.enabled: true
+      assessment_frameworks.grade.enabled: true
+      retraction_checking.enabled: true
+      filtering.minimum_credibility: "medium"
+
+  # Preset: High Quality Only (for meta-analysis)
+  high_quality_only:
+    search_agent:
+      default_databases: [pubmed, europepmc]
+      publication_types: ["Randomized Controlled Trial", "Meta-Analysis"]
+    screening_agent:
+      thresholds.confidence_threshold: 0.85
+    credibility_agent:
+      peer_review.require_peer_reviewed: true
+      filtering.minimum_credibility: "high"
+      assessment_frameworks.cochrane_rob.enabled: true
+      assessment_frameworks.grade.enabled: true

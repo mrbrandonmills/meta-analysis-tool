@@ -103,6 +103,7 @@ class Paper(Base, BaseModel):
         back_populates="papers",
         lazy="dynamic"
     )
+    pdf_metadata = relationship("PDFMetadata", back_populates="paper", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         """String representation."""
