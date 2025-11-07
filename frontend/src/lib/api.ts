@@ -608,4 +608,5 @@ export const healthApi = {
 };
 
 // Export the axios instance for custom requests
+export { apiClient };
 export default apiClient;

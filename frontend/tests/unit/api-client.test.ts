@@ -1,10 +1,11 @@
 /**
  * Unit tests for API client
+ * @vitest-environment node
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import {
+  apiClient,
   authApi,
   metaAnalysisApi,
   projectsApi,
@@ -15,11 +16,47 @@ import {
   isAuthenticated,
 } from '@/lib/api';
 
+// Mock window and localStorage for node environment
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+// Mock window object for node environment
+(global as any).window = {
+  localStorage: localStorageMock,
+  location: {
+    href: '',
+  },
+};
+
+global.localStorage = localStorageMock as any;
+
+// Mock react-hot-toast to avoid import errors
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
+
 describe('API Client', () => {
   let mock: MockAdapter;
 
   beforeEach(() => {
-    mock = new MockAdapter(axios);
+    mock = new MockAdapter(apiClient);
     clearTokens();
     localStorage.clear();
   });
@@ -61,7 +98,7 @@ describe('API Client', () => {
         },
       };
 
-      mock.onPost('/api/v1/auth/login').reply(200, mockResponse);
+      mock.onPost('/auth/login').reply(200, mockResponse);
 
       const result = await authApi.login({
         username: 'test@example.com',
@@ -73,7 +110,7 @@ describe('API Client', () => {
     });
 
     it('should handle login failure', async () => {
-      mock.onPost('/api/v1/auth/login').reply(401, {
+      mock.onPost('/auth/login').reply(401, {
         detail: 'Invalid credentials',
       });
 
@@ -98,7 +135,7 @@ describe('API Client', () => {
         },
       };
 
-      mock.onPost('/api/v1/auth/register').reply(200, mockResponse);
+      mock.onPost('/auth/register').reply(200, mockResponse);
 
       const result = await authApi.register({
         email: 'new@example.com',
@@ -121,7 +158,7 @@ describe('API Client', () => {
         role: 'researcher',
       };
 
-      mock.onGet('/api/v1/auth/me').reply(200, mockUser);
+      mock.onGet('/auth/me').reply(200, mockUser);
 
       const result = await authApi.getCurrentUser();
       expect(result).toEqual(mockUser);
@@ -147,7 +184,7 @@ describe('API Client', () => {
         },
       };
 
-      mock.onPost('/api/v1/meta-analysis/create').reply(200, mockResponse);
+      mock.onPost('/meta-analysis/create').reply(200, mockResponse);
 
       const result = await metaAnalysisApi.createMetaAnalysis({
         research_question: 'Test question',
@@ -187,7 +224,7 @@ describe('API Client', () => {
         next_steps: ['data extraction'],
       };
 
-      mock.onPost('/api/v1/meta-analysis/execute/analysis-1').reply(200, mockResponse);
+      mock.onPost('/meta-analysis/execute/analysis-1').reply(200, mockResponse);
 
       const result = await metaAnalysisApi.executeMetaAnalysis('analysis-1');
       expect(result).toEqual(mockResponse);
@@ -200,7 +237,7 @@ describe('API Client', () => {
         decisions: 5,
       };
 
-      mock.onGet('/api/v1/meta-analysis/status/analysis-1').reply(200, mockResponse);
+      mock.onGet('/meta-analysis/status/analysis-1').reply(200, mockResponse);
 
       const result = await metaAnalysisApi.getStatus('analysis-1');
       expect(result).toEqual(mockResponse);
@@ -220,7 +257,7 @@ describe('API Client', () => {
         ],
       };
 
-      mock.onGet('/api/v1/meta-analysis/audit/analysis-1').reply(200, mockResponse);
+      mock.onGet('/meta-analysis/audit/analysis-1').reply(200, mockResponse);
 
       const result = await metaAnalysisApi.getAuditTrail('analysis-1');
       expect(result).toEqual(mockResponse);
@@ -241,7 +278,7 @@ describe('API Client', () => {
         total: 2,
       };
 
-      mock.onGet('/api/v1/projects').reply(200, mockResponse);
+      mock.onGet('/projects').reply(200, mockResponse);
 
       const result = await projectsApi.list();
       expect(result.projects).toHaveLength(2);
@@ -255,7 +292,7 @@ describe('API Client', () => {
         tool_type: 'meta_analysis',
       };
 
-      mock.onGet('/api/v1/projects/1').reply(200, mockProject);
+      mock.onGet('/projects/1').reply(200, mockProject);
 
       const result = await projectsApi.get('1');
       expect(result).toEqual(mockProject);
@@ -268,7 +305,7 @@ describe('API Client', () => {
         description: 'Test description',
       };
 
-      mock.onPost('/api/v1/projects').reply(201, { id: '3', ...newProject });
+      mock.onPost('/projects').reply(201, { id: '3', ...newProject });
 
       const result = await projectsApi.create(newProject);
       expect(result.id).toBe('3');
@@ -276,7 +313,7 @@ describe('API Client', () => {
     });
 
     it('should delete project', async () => {
-      mock.onDelete('/api/v1/projects/1').reply(204);
+      mock.onDelete('/projects/1').reply(204);
 
       await expect(projectsApi.delete('1')).resolves.not.toThrow();
     });
@@ -290,7 +327,7 @@ describe('API Client', () => {
         version: '0.1.0',
       };
 
-      mock.onGet('/api/v1/health').reply(200, mockResponse);
+      mock.onGet('/health').reply(200, mockResponse);
 
       const result = await healthApi.check();
       expect(result.status).toBe('healthy');
@@ -306,7 +343,7 @@ describe('API Client', () => {
         },
       };
 
-      mock.onGet('/api/v1/health/detailed').reply(200, mockResponse);
+      mock.onGet('/health/detailed').reply(200, mockResponse);
 
       const result = await healthApi.detailed();
       expect(result.services).toBeDefined();
@@ -316,25 +353,25 @@ describe('API Client', () => {
 
   describe('Error Handling', () => {
     it('should handle 401 unauthorized', async () => {
-      mock.onGet('/api/v1/auth/me').reply(401, { detail: 'Unauthorized' });
+      mock.onGet('/auth/me').reply(401, { detail: 'Unauthorized' });
 
       await expect(authApi.getCurrentUser()).rejects.toThrow();
     });
 
     it('should handle 404 not found', async () => {
-      mock.onGet('/api/v1/projects/nonexistent').reply(404, { detail: 'Not found' });
+      mock.onGet('/projects/nonexistent').reply(404, { detail: 'Not found' });
 
       await expect(projectsApi.get('nonexistent')).rejects.toThrow();
     });
 
     it('should handle 500 server error', async () => {
-      mock.onGet('/api/v1/health').reply(500, { detail: 'Internal server error' });
+      mock.onGet('/health').reply(500, { detail: 'Internal server error' });
 
       await expect(healthApi.check()).rejects.toThrow();
     });
 
     it('should handle network errors', async () => {
-      mock.onGet('/api/v1/health').networkError();
+      mock.onGet('/health').networkError();
 
       await expect(healthApi.check()).rejects.toThrow();
     });

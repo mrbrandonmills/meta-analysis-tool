@@ -114,14 +114,22 @@ describe('StudyCharacteristicsTable', () => {
       />
     );
 
-    // Find the year column header and click it
-    const yearHeader = screen.getByText('Year').closest('th');
+    // Find the year column header - getByText returns the text element inside th, so use parentElement
+    const yearText = screen.getByText('Year');
+    const yearHeader = yearText.parentElement?.parentElement; // div wrapper then th
+
+    expect(yearHeader).toBeTruthy();
 
     if (yearHeader) {
+      // Click the header to sort
       fireEvent.click(yearHeader);
-      // After click, sorting should be applied
-      // We can verify by checking if the component re-renders
-      expect(yearHeader).toBeInTheDocument();
+
+      // Verify the header is still in the document after click (component re-rendered)
+      expect(screen.getByText('Year')).toBeInTheDocument();
+
+      // Verify sorting indicator appears (ArrowUp or ArrowDown icon)
+      const sortIcon = yearHeader.querySelector('svg');
+      expect(sortIcon).toBeInTheDocument();
     }
   });
 

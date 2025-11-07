@@ -6,8 +6,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'happy-dom',
     setupFiles: './tests/setup.ts',
+    environmentMatchGlobs: [
+      ['tests/unit/api-client.test.ts', 'node'],
+    ],
     css: true,
     coverage: {
       provider: 'v8',

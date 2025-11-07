@@ -108,7 +108,7 @@ describe('ProjectsList', () => {
     const searchInput = screen.getByPlaceholderText('Search projects...')
     await user.type(searchInput, 'COVID')
 
-    const clearButton = screen.getByRole('button', { name: /×/i })
+    const clearButton = screen.getByRole('button', { name: 'Clear search' })
     await user.click(clearButton)
 
     expect(searchInput).toHaveValue('')
@@ -158,7 +158,7 @@ describe('ProjectsList', () => {
     await user.click(filterButton)
 
     // Click "Meta-Analysis" filter
-    const metaAnalysisFilter = screen.getByText(/Meta-Analysis/)
+    const metaAnalysisFilter = screen.getByRole('button', { name: 'Meta-Analysis' })
     await user.click(metaAnalysisFilter)
 
     await waitFor(() => {
@@ -180,7 +180,7 @@ describe('ProjectsList', () => {
     await user.click(inProgressFilter)
 
     // Apply tool type filter
-    const metaAnalysisFilter = screen.getByText(/Meta-Analysis/)
+    const metaAnalysisFilter = screen.getByRole('button', { name: 'Meta-Analysis' })
     await user.click(metaAnalysisFilter)
 
     await waitFor(() => {

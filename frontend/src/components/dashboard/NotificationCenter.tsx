@@ -339,7 +339,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
           className="p-12 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-2xl text-center"
         >
           <Bell className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2" data-testid="empty-state-title">
             {filter === 'unread' ? 'All caught up!' : 'No notifications yet'}
           </h3>
           <p className="text-gray-600">

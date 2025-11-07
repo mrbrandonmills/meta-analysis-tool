@@ -41,9 +41,12 @@ describe('PRISMAFlow', () => {
   it('shows correct counts', () => {
     render(<PRISMAFlow data={samplePRISMAFlowData} />);
 
-    // Check for specific numbers from sample data
-    expect(screen.getByText(samplePRISMAFlowData.identification.recordsIdentified.toLocaleString())).toBeInTheDocument();
-    expect(screen.getByText(samplePRISMAFlowData.included.studiesIncluded.toLocaleString())).toBeInTheDocument();
+    // Check for specific numbers from sample data - use getAllByText since numbers appear in multiple places
+    const recordsIdentifiedElements = screen.getAllByText(samplePRISMAFlowData.identification.recordsIdentified.toLocaleString());
+    expect(recordsIdentifiedElements.length).toBeGreaterThan(0);
+
+    const studiesIncludedElements = screen.getAllByText(samplePRISMAFlowData.included.studiesIncluded.toLocaleString());
+    expect(studiesIncludedElements.length).toBeGreaterThan(0);
   });
 
   it('displays summary statistics', () => {

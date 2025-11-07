@@ -26,7 +26,8 @@ describe('ForestPlot', () => {
   it('displays overall effect label', () => {
     render(<ForestPlot results={sampleMetaAnalysisResults} />);
 
-    expect(screen.getByText(/Overall Effect/i)).toBeInTheDocument();
+    const overallEffectElements = screen.getAllByText(/Overall Effect/i);
+    expect(overallEffectElements.length).toBeGreaterThan(0);
   });
 
   it('displays heterogeneity statistics when enabled', () => {

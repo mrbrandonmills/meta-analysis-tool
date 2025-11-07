@@ -201,6 +201,7 @@ const ProjectsList: React.FC<ProjectsListProps> = ({
             <button
               onClick={() => setSearchQuery('')}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
             >
               <X className="w-5 h-5" />
             </button>
@@ -304,6 +305,8 @@ const ProjectsList: React.FC<ProjectsListProps> = ({
                     <button
                       key={option.value}
                       onClick={() => toggleToolTypeFilter(option.value)}
+                      role="button"
+                      aria-label={option.label}
                       className={`
                         px-4 py-2 rounded-lg text-sm font-medium transition-all
                         ${

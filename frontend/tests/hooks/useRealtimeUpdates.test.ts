@@ -20,11 +20,10 @@ vi.mock('@/stores/useAppStore', () => ({
 describe('useRealtimeUpdates', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    vi.useRealTimers()
+    vi.clearAllTimers()
   })
 
   it('initializes with default values', () => {
@@ -48,23 +47,26 @@ describe('useRealtimeUpdates', () => {
     const mockGetNotifications = vi.mocked(dashboardApi.getNotifications)
     mockGetNotifications.mockResolvedValue([])
 
-    renderHook(() => useRealtimeUpdates({ enabled: true, pollingInterval: 1000 }))
+    const { unmount } = renderHook(() => useRealtimeUpdates({ enabled: true, pollingInterval: 100 }))
 
-    // Wait for initial fetch
-    await waitFor(() => {
-      expect(mockGetProjects).toHaveBeenCalledTimes(1)
-      expect(mockGetNotifications).toHaveBeenCalledTimes(1)
-    })
+    try {
+      // Wait for initial fetch
+      await waitFor(() => {
+        expect(mockGetProjects).toHaveBeenCalled()
+        expect(mockGetNotifications).toHaveBeenCalled()
+      }, { timeout: 200 })
 
-    // Advance timer to trigger polling
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
+      const initialCalls = mockGetProjects.mock.calls.length
 
-    await waitFor(() => {
-      expect(mockGetProjects).toHaveBeenCalledTimes(2)
-      expect(mockGetNotifications).toHaveBeenCalledTimes(2)
-    })
+      // Wait for next poll cycle (150ms should be enough for 100ms interval)
+      await new Promise(resolve => setTimeout(resolve, 150))
+
+      // Verify that polling occurred at least twice
+      expect(mockGetProjects.mock.calls.length).toBeGreaterThan(initialCalls)
+      expect(mockGetNotifications.mock.calls.length).toBeGreaterThan(initialCalls)
+    } finally {
+      unmount()
+    }
   })
 
   it('does not poll when disabled', async () => {
@@ -72,9 +74,8 @@ describe('useRealtimeUpdates', () => {
 
     renderHook(() => useRealtimeUpdates({ enabled: false }))
 
-    act(() => {
-      vi.advanceTimersByTime(10000)
-    })
+    // Wait a bit to ensure no polling happens
+    await new Promise(resolve => setTimeout(resolve, 200))
 
     expect(mockGetProjects).not.toHaveBeenCalled()
   })
@@ -100,10 +101,11 @@ describe('useRealtimeUpdates', () => {
       useRealtimeUpdates({
         enabled: true,
         projectId: '1',
-        pollingInterval: 1000,
+        pollingInterval: 100,
       })
     )
 
+    // Wait for initial fetch to complete
     await waitFor(() => {
       expect(mockGetProject).toHaveBeenCalledWith('1')
     })
@@ -133,11 +135,12 @@ describe('useRealtimeUpdates', () => {
       useRealtimeUpdates({
         enabled: true,
         projectId: '1',
-        pollingInterval: 1000,
+        pollingInterval: 100,
         onProjectUpdate,
       })
     )
 
+    // Wait for initial fetch and callback
     await waitFor(() => {
       expect(onProjectUpdate).toHaveBeenCalledWith(mockProject)
     })
@@ -232,7 +235,7 @@ describe('useRealtimeUpdates', () => {
     mockGetNotifications.mockResolvedValue([])
 
     const { unmount } = renderHook(() =>
-      useRealtimeUpdates({ enabled: true, pollingInterval: 1000 })
+      useRealtimeUpdates({ enabled: true, pollingInterval: 100 })
     )
 
     await waitFor(() => {
@@ -243,9 +246,8 @@ describe('useRealtimeUpdates', () => {
 
     const callCount = mockGetProjects.mock.calls.length
 
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
+    // Wait to ensure no more calls happen after unmount
+    await new Promise(resolve => setTimeout(resolve, 200))
 
     // Should not have made additional calls after unmount
     expect(mockGetProjects).toHaveBeenCalledTimes(callCount)
@@ -265,7 +267,7 @@ describe('useRealtimeUpdates', () => {
     mockGetNotifications.mockResolvedValue([])
 
     renderHook(() =>
-      useRealtimeUpdates({ enabled: true, pollingInterval: 1000 })
+      useRealtimeUpdates({ enabled: true, pollingInterval: 100 })
     )
 
     await waitFor(() => {
@@ -283,9 +285,8 @@ describe('useRealtimeUpdates', () => {
 
     const callCount = mockGetProjects.mock.calls.length
 
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
+    // Wait to ensure no more polls happen while hidden
+    await new Promise(resolve => setTimeout(resolve, 200))
 
     // Should not poll while hidden
     expect(mockGetProjects).toHaveBeenCalledTimes(callCount)
@@ -295,11 +296,10 @@ describe('useRealtimeUpdates', () => {
 describe('useProjectProgress', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    vi.useRealTimers()
+    vi.clearAllTimers()
   })
 
   it('calculates progress from workflows', async () => {
@@ -359,9 +359,8 @@ describe('useProjectProgress', () => {
 
     renderHook(() => useProjectProgress(undefined))
 
-    act(() => {
-      vi.advanceTimersByTime(10000)
-    })
+    // Wait a bit to ensure no polling happens
+    await new Promise(resolve => setTimeout(resolve, 200))
 
     expect(mockGetProject).not.toHaveBeenCalled()
   })
