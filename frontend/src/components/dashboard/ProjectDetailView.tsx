@@ -386,12 +386,13 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                     className="p-6 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-2xl"
                   >
                     <AgentStatusCard
-                      agentName={workflow.agentName}
-                      agentRole={workflow.agentRole}
-                      status={workflow.status as any}
-                      currentTask={workflow.status === WorkflowStatus.IN_PROGRESS ? 'Processing...' : undefined}
-                      progress={workflow.progress || 0}
-                      message={workflow.errorMessage}
+                      progress={{
+                        agentName: workflow.agentName || 'Agent',
+                        status: workflow.status as any,
+                        currentTask: workflow.status === WorkflowStatus.IN_PROGRESS ? 'Processing...' : undefined,
+                        progress: Number(workflow.progress) || 0,
+                        message: workflow.errorMessage
+                      }}
                     />
                     {workflow.decisions && workflow.decisions.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
