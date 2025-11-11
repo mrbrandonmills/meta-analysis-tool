@@ -12,7 +12,7 @@ import json
 import logging
 
 from app.db.session import get_async_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user_from_bearer
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -200,7 +200,7 @@ def get_task_progress(task_id: str, task_type: str) -> ProgressResponse:
 async def get_progress(
     task_id: str,
     task_type: str = Query(..., description="Type of task (meta-analysis, peer-review, reviewer-matcher)"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_bearer),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -229,7 +229,7 @@ async def get_progress(
 async def clear_progress(
     task_id: str,
     task_type: str = Query(..., description="Type of task"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_bearer)
 ):
     """
     Clear progress data for a task
