@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends
 from loguru import logger
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentConfig, AgentOrchestrator
 from app.agents.specialized import (
@@ -16,7 +16,7 @@ from app.agents.specialized import (
     QAAgent,
     CredibilityAgent,
 )
-from app.db.session import get_db
+from app.db.session import get_async_db
 from app.models.paper import Paper
 from app.models.pdf_metadata import PDFMetadata, PDFDownloadStatus, FullTextExtraction
 from app.models.meta_analysis import MetaAnalysisStatus
@@ -61,7 +61,7 @@ class QuestionRequest(BaseModel):
 @router.post("/meta-analysis/create", response_model=MetaAnalysisResponse)
 async def create_meta_analysis(
     request: MetaAnalysisRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Create a new meta-analysis.
 
@@ -160,7 +160,7 @@ async def create_meta_analysis(
 @router.post("/meta-analysis/execute/{analysis_id}")
 async def execute_meta_analysis(
     analysis_id: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Execute a meta-analysis workflow.
 
@@ -330,7 +330,7 @@ async def execute_meta_analysis(
 
 
 @router.get("/meta-analysis/status/{analysis_id}")
-async def get_status(analysis_id: str, db: Session = Depends(get_db)):
+async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db)):
     """Get the status of a meta-analysis from database."""
     try:
         service = MetaAnalysisService(db)
@@ -498,7 +498,7 @@ class FullTextScreeningResponse(BaseModel):
 async def download_pdfs(
     analysis_id: str,
     request: PDFDownloadRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Download PDFs for studies in a meta-analysis.
 
@@ -565,7 +565,7 @@ async def download_pdfs(
 
 
 @router.get("/meta-analysis/pdf-status/{analysis_id}", response_model=PDFStatusResponse)
-async def get_pdf_status(analysis_id: str, db: Session = Depends(get_db)):
+async def get_pdf_status(analysis_id: str, db: AsyncSession = Depends(get_async_db)):
     """Get PDF download and extraction status for an analysis.
 
     Returns statistics about:
@@ -637,7 +637,7 @@ async def get_pdf_status(analysis_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/meta-analysis/extract-text/{analysis_id}")
-async def extract_text(analysis_id: str, db: Session = Depends(get_db)):
+async def extract_text(analysis_id: str, db: AsyncSession = Depends(get_async_db)):
     """Extract text from downloaded PDFs.
 
     This endpoint:
@@ -691,7 +691,7 @@ async def extract_text(analysis_id: str, db: Session = Depends(get_db)):
 async def full_text_screen(
     analysis_id: str,
     request: FullTextScreeningRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Perform full-text screening using extracted text.
 
@@ -779,7 +779,7 @@ async def full_text_screen(
 
 
 @router.get("/meta-analysis/study/{study_id}/full-text")
-async def get_study_full_text(study_id: str, db: Session = Depends(get_db)):
+async def get_study_full_text(study_id: str, db: AsyncSession = Depends(get_async_db)):
     """Get full-text extraction and screening results for a study.
 
     Returns:

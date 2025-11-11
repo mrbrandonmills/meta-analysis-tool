@@ -4,14 +4,14 @@ Provides real-time progress updates for long-running tasks
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import datetime, timedelta
 import redis
 import json
 import logging
 
-from app.db.session import get_db
+from app.db.session import get_async_db
 from app.core.auth import get_current_user
 from app.models.user import User
 
@@ -201,7 +201,7 @@ async def get_progress(
     task_id: str,
     task_type: str = Query(..., description="Type of task (meta-analysis, peer-review, reviewer-matcher)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get real-time progress for a task
