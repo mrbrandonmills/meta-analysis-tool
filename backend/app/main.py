@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction
+from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction, subscriptions, payouts, review_approval
 from app.core.config import get_settings
 from app.core.logging_config import configure_logging
 from app.core.middleware import (
@@ -194,6 +194,9 @@ app.include_router(researcher_enrichment.router, prefix="/api/v1", tags=["resear
 app.include_router(reviewer_matcher.router, prefix="/api/v1", tags=["reviewer-matcher"])
 app.include_router(research_direction.router, prefix="/api/v1", tags=["research-direction"])
 app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
+app.include_router(subscriptions.router, prefix="/api/v1", tags=["subscriptions"])
+app.include_router(payouts.router, prefix="/api/v1", tags=["payouts"])
+app.include_router(review_approval.router, prefix="/api/v1", tags=["review-approval"])
 
 
 if __name__ == "__main__":
