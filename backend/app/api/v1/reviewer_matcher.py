@@ -1,5 +1,7 @@
 """Reviewer Matcher API endpoints - Tool 4: Expert Reviewer Matching."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
