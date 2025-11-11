@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from datetime import date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Path
 from loguru import logger
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -140,8 +140,8 @@ async def get_my_earnings(
 
 @router.get("/pool/{year}/{month}", response_model=PayoutPoolResponse)
 async def get_payout_pool(
-    year: int = Query(..., ge=2020, le=2100),
-    month: int = Query(..., ge=1, le=12),
+    year: int = Path(..., ge=2020, le=2100),
+    month: int = Path(..., ge=1, le=12),
     db: AsyncSession = Depends(get_async_db),
     current_user: TokenData = Depends(get_current_user_token)
 ):
