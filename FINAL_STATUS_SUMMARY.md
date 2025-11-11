@@ -75,33 +75,30 @@
 
 ## ⏳ PENDING ISSUES
 
-### Railway Deployment Not Complete
+### Railway Deployment Not Complete ⚠️ **BLOCKER**
 
-**Status:** Still serving old code from November 6
+**Status:** Still serving old code from November 6 despite multiple redeploy attempts
 - Payment endpoints returning 404
 - Tool 2 endpoints returning 404
 - Only 28 routes (should be 40+)
 
-**Possible Causes:**
-1. Railway auto-deploy not triggering from GitHub
-2. Build cache preventing new deployment
-3. Deployment queue delay
+**Attempts Made:**
+- ✅ Pushed commits to GitHub (811b55b, ef401ac, c025bfb)
+- ✅ Ran `railway up --detach` multiple times
+- ✅ Ran `railway redeploy -y`
+- ✅ Waited 8+ minutes for builds
+- ❌ **Still not deploying updated code**
 
-**Solutions:**
-1. **Manual Redeploy** (Recommended):
-   - Visit: https://railway.com/project/b0e4e10d-b739-4b8e-88e9-ba3e9d99968c
-   - Click "Redeploy" button
-   - Wait 3-5 minutes
+**Root Cause:** Railway CLI not triggering actual deployment despite successful uploads
 
-2. **Force Rebuild:**
-   ```bash
-   railway up --detach
-   ```
+**REQUIRED ACTION: Manual Redeploy via Web Dashboard**
+1. Visit: https://railway.com/project/b0e4e10d-b739-4b8e-88e9-ba3e9d99968c
+2. Click on "meta-analysis-tool" service
+3. Click "Redeploy" button (top right)
+4. Wait 3-5 minutes for build
+5. Verify with: `bash /tmp/verify_deployment.sh`
 
-3. **Check Deployment Logs:**
-   ```bash
-   railway logs --deployment
-   ```
+**See:** `/DEPLOYMENT_BLOCKER_REPORT.md` for full details
 
 ### Database Migrations Not Run
 
