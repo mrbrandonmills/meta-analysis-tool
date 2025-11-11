@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    # Stripe Payment Integration
+    stripe_secret_key: str = "sk_test_dummy_key_for_migrations"
+    stripe_publishable_key: str = "pk_test_dummy_key_for_migrations"
+    stripe_webhook_secret: str = "whsec_dummy_secret_for_migrations"
+    stripe_price_id: Optional[str] = None  # Monthly $100 price ID
+
     # Feature Flags
     enable_voice: bool = False
     enable_learning: bool = True

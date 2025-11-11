@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 from datetime import date
 
-from sqlalchemy import Column, String, Text, Integer, Float, Date
+from sqlalchemy import Column, String, Text, Integer, Float, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 
@@ -70,9 +70,18 @@ class Researcher(Base, BaseModel):
     semantic_scholar_id = Column(String(100), nullable=True, index=True)
     google_scholar_id = Column(String(100), nullable=True, index=True)
 
+    # Payout fields
+    stripe_connect_account_id = Column(String(255), unique=True, nullable=True, index=True)
+    connect_account_status = Column(String(50), default="not_connected", nullable=False)
+    bank_account_verified = Column(Boolean, default=False, nullable=False)
+    total_earnings_cents = Column(Integer, default=0, nullable=False)
+    lifetime_reviews_paid = Column(Integer, default=0, nullable=False)
+    last_payout_date = Column(Date, nullable=True)
+
     # Relationships
     projects = relationship("Project", secondary="project_researchers", back_populates="researchers", lazy="dynamic")
     papers = relationship("Paper", secondary="paper_authors", back_populates="authors_relationships", lazy="dynamic")
+    payout_distributions = relationship("PayoutDistribution", back_populates="reviewer", cascade="all, delete-orphan", lazy="dynamic")
 
     def __repr__(self) -> str:
         """String representation."""

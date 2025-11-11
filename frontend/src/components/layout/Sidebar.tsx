@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
@@ -11,13 +11,17 @@ import {
   Microscope,
   Users,
   FileText,
-  Lightbulb
+  Lightbulb,
+  DollarSign,
+  Activity,
+  CreditCard
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { cn } from '../../lib/utils';
+import { canAccessAdmin, canAccessEditor } from '@/lib/rbac';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+const baseNavigation = [
+  { name: 'Dashboard', href: '/dashboard-new', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: Folder },
   {
     name: 'Tools',
@@ -28,17 +32,36 @@ const navigation = [
       { name: 'Peer Review', href: '/tools/peer-review', icon: FileText },
       { name: 'Research Direction', href: '/tools/research-direction', icon: Lightbulb }
     ]
-  },
+  }
+];
+
+const paymentNavigation = [
+  { name: 'My Earnings', href: '/earnings', icon: DollarSign, roles: ['researcher', 'editor', 'admin'] },
+  { name: 'Editor', href: '/editor', icon: FileText, roles: ['editor', 'admin'] },
+  { name: 'Admin', href: '/admin', icon: Activity, roles: ['admin'] }
+];
+
+const bottomNavigation = [
   { name: 'Settings', href: '/settings', icon: Settings }
 ];
 
 export const Sidebar: React.FC = () => {
   const router = useRouter();
-  const { sidebarOpen, setSidebarOpen } = useAppStore();
+  const { sidebarOpen, setSidebarOpen, user } = useAppStore();
 
   const isActive = (href: string) => {
     return router.pathname === href || router.pathname.startsWith(href + '/');
   };
+
+  // Filter payment navigation based on user role
+  const filteredPaymentNav = useMemo(() => {
+    return paymentNavigation.filter(item => {
+      if (!item.roles || !user) return false;
+      return item.roles.includes(user.role);
+    });
+  }, [user]);
+
+  const navigation = [...baseNavigation, ...filteredPaymentNav, ...bottomNavigation];
 
   return (
     <>
@@ -126,11 +149,20 @@ export const Sidebar: React.FC = () => {
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-              U
+              {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">User Name</p>
-              <p className="text-xs text-gray-500 truncate">user@example.com</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.name || 'User Name'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {user?.email || 'user@example.com'}
+              </p>
+              {user?.role && (
+                <p className="text-xs text-blue-600 font-medium capitalize">
+                  {user.role}
+                </p>
+              )}
             </div>
           </div>
         </div>

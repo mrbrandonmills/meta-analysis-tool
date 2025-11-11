@@ -49,11 +49,19 @@ class User(Base):
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
 
+    # Payment fields
+    stripe_customer_id = Column(String(255), unique=True, nullable=True, index=True)
+    is_paying_member = Column(Boolean, default=False, nullable=False)
+    member_since = Column(DateTime, nullable=True)
+    subscription_status = Column(String(50), nullable=True)
+
     # Relationships
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
     report_templates = relationship("ReportTemplate", back_populates="creator", cascade="all, delete-orphan", lazy="dynamic")
     meta_analyses = relationship("MetaAnalysis", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
+    subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
+    contributions = relationship("PayoutContribution", back_populates="user", cascade="all, delete-orphan", lazy="dynamic")
     # api_keys = relationship("APIKey", back_populates="user")
 
     def __repr__(self):

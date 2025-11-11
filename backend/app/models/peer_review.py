@@ -87,9 +87,18 @@ class PeerReview(Base, BaseModel):
     # Additional metadata
     review_metadata = Column(JSONB, nullable=True, default=dict)
 
+    # Approval fields
+    editor_approved = Column(Boolean, default=False, nullable=False, index=True)
+    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    approved_at = Column(DateTime, nullable=True, index=True)
+    approval_notes = Column(Text, nullable=True)
+    eligible_for_payout = Column(Boolean, default=True, nullable=False)
+
     # Relationships
     manuscript = relationship("Manuscript", back_populates="reviews")
     reviewer = relationship("Researcher", foreign_keys=[reviewer_id])
+    approver = relationship("User", foreign_keys=[approved_by])
+    completion = relationship("ReviewCompletion", back_populates="peer_review", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         """String representation."""

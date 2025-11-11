@@ -22,6 +22,12 @@ from app.models.research_proposal import ResearchProposal, ProposalStatus, Propo
 from app.models.meta_analysis import MetaAnalysis, CoordinatorState, AgentExecution, MetaAnalysisStatus
 from app.models.report import Report, ReportTemplate, ReportFormat, ReportStatus
 from app.models.associations import project_papers, project_researchers, paper_authors
+# Payment ecosystem models
+from app.models.subscription import Subscription, SubscriptionStatus, SubscriptionPlanType
+from app.models.payout_pool import PayoutPool, PayoutPoolStatus
+from app.models.payout_contribution import PayoutContribution, ContributionStatus
+from app.models.review_completion import ReviewCompletion, PayoutStatus
+from app.models.payout_distribution import PayoutDistribution, TransferStatus
 
 __all__ = [
     # Base models and mixins
@@ -83,4 +89,16 @@ __all__ = [
     "project_papers",
     "project_researchers",
     "paper_authors",
+    # Payment ecosystem models
+    "Subscription",
+    "SubscriptionStatus",
+    "SubscriptionPlanType",
+    "PayoutPool",
+    "PayoutPoolStatus",
+    "PayoutContribution",
+    "ContributionStatus",
+    "ReviewCompletion",
+    "PayoutStatus",
+    "PayoutDistribution",
+    "TransferStatus",
 ]
