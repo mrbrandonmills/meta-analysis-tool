@@ -49,16 +49,6 @@ class MatchSearchRequest(BaseModel):
         return v
 
 
-class MatchSearchResponse(BaseModel):
-    """Response for match search."""
-
-    manuscript_id: str
-    total_candidates: int
-    matches: List["ReviewerMatchResponse"]
-    search_criteria: Dict[str, Any]
-    timestamp: str
-
-
 class ReviewerMatchResponse(BaseModel):
     """Response schema for reviewer match."""
 
@@ -88,6 +78,16 @@ class ReviewerMatchResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MatchSearchResponse(BaseModel):
+    """Response for match search."""
+
+    manuscript_id: str
+    total_candidates: int
+    matches: List[ReviewerMatchResponse]  # No quotes needed now
+    search_criteria: Dict[str, Any]
+    timestamp: str
 
 
 class InvitationRequest(BaseModel):
