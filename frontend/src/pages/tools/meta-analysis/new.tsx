@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Layout from '@/components/layout/Layout'
 import AgentPipeline, { AgentState, AgentStep } from '@/components/workflow/AgentPipeline'
+import ProgressTracker from '@/components/workflow/ProgressTracker'
 import {
   Microscope,
   Plus,
@@ -16,9 +17,11 @@ import {
   Award,
   FileText,
   BarChart3,
-  FileDown
+  FileDown,
+  Bell
 } from 'lucide-react'
 import { useRouter } from 'next/router'
+import { notifyComplete, initializeNotifications } from '@/lib/notifications'
 
 interface MetaAnalysisFormData {
   research_question: string
@@ -53,10 +56,16 @@ const MetaAnalysisNewPage: React.FC = () => {
 
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isExecuting, setIsExecuting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [agentSteps, setAgentSteps] = useState<AgentStep[]>([])
   const [reportUrl, setReportUrl] = useState<string | null>(null)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+
+  // Initialize notifications on mount
+  useEffect(() => {
+    initializeNotifications().then(() => {
+      setNotificationsEnabled(true)
+    })
+  }, [])
 
   const handleInputChange = (field: keyof MetaAnalysisFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -111,55 +120,8 @@ const MetaAnalysisNewPage: React.FC = () => {
       const data: AnalysisResponse = await response.json()
       setAnalysisId(data.id)
 
-      // Initialize agent steps from workflow
-      const steps = [
-        {
-          id: '1',
-          name: 'Search Agent',
-          description: 'Searching academic databases',
-          icon: Search,
-          state: AgentState.PENDING
-        },
-        {
-          id: '2',
-          name: 'Screening Agent',
-          description: 'Applying inclusion/exclusion criteria',
-          icon: Filter,
-          state: AgentState.PENDING
-        },
-        {
-          id: '3',
-          name: 'Quality Assessment',
-          description: 'Evaluating study quality',
-          icon: Award,
-          state: AgentState.PENDING
-        },
-        {
-          id: '4',
-          name: 'Data Extraction',
-          description: 'Extracting key data points',
-          icon: FileText,
-          state: AgentState.PENDING
-        },
-        {
-          id: '5',
-          name: 'Statistical Analysis',
-          description: 'Running meta-analysis calculations',
-          icon: BarChart3,
-          state: AgentState.PENDING
-        },
-        {
-          id: '6',
-          name: 'Report Generation',
-          description: 'Creating publication-ready report',
-          icon: FileDown,
-          state: AgentState.PENDING
-        }
-      ]
-      setAgentSteps(steps)
-
-      // Auto-execute
-      await executeAnalysis(data.id, steps)
+      // Execute the analysis
+      await executeAnalysis(data.id)
     } catch (err: any) {
       setError(err.message || 'Failed to create analysis')
     } finally {
@@ -167,9 +129,7 @@ const MetaAnalysisNewPage: React.FC = () => {
     }
   }
 
-  const executeAnalysis = async (id: string, steps: AgentStep[]) => {
-    setIsExecuting(true)
-
+  const executeAnalysis = async (id: string) => {
     try {
       const response = await fetch(`${API_URL}/api/v1/meta-analysis/execute/${id}`, {
         method: 'POST',
@@ -181,69 +141,27 @@ const MetaAnalysisNewPage: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to execute analysis')
       }
-
-      // Poll for status updates
-      pollStatus(id, steps)
     } catch (err: any) {
       setError(err.message || 'Failed to execute analysis')
-      setIsExecuting(false)
     }
   }
 
-  const pollStatus = async (id: string, steps: AgentStep[]) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/meta-analysis/status/${id}`)
-
-        if (!response.ok) {
-          throw new Error('Failed to get status')
-        }
-
-        const status = await response.json()
-
-        // Update agent steps based on status
-        const updatedSteps = steps.map((step, index) => {
-          if (index < status.completed_steps) {
-            return { ...step, state: AgentState.COMPLETED }
-          } else if (index === status.completed_steps) {
-            return { ...step, state: AgentState.RUNNING, progress: status.progress }
+  const handleComplete = () => {
+    // Notify user
+    notifyComplete(
+      'Meta-Analysis Complete!',
+      'Your systematic review has been successfully completed.',
+      {
+        onClick: () => {
+          if (reportUrl) {
+            window.open(reportUrl, '_blank')
           }
-          return step
-        })
-
-        setAgentSteps(updatedSteps)
-
-        // Check if complete
-        if (status.status === 'completed') {
-          clearInterval(interval)
-          setIsExecuting(false)
-          setReportUrl(`${API_URL}/api/v1/meta-analysis/report/${id}`)
-
-          // Mark all steps as completed
-          setAgentSteps(steps.map(step => ({ ...step, state: AgentState.COMPLETED })))
-        } else if (status.status === 'failed') {
-          clearInterval(interval)
-          setIsExecuting(false)
-          setError(status.message || 'Analysis failed')
-
-          // Mark current step as error
-          const errorSteps = updatedSteps.map((step, index) =>
-            index === status.completed_steps
-              ? { ...step, state: AgentState.ERROR, message: status.message }
-              : step
-          )
-          setAgentSteps(errorSteps)
         }
-      } catch (err) {
-        console.error('Polling error:', err)
       }
-    }, 2000)
+    )
 
-    // Stop polling after 5 minutes
-    setTimeout(() => {
-      clearInterval(interval)
-      setIsExecuting(false)
-    }, 300000)
+    // Set report URL
+    setReportUrl(`${API_URL}/api/v1/meta-analysis/report/${analysisId}`)
   }
 
   const downloadReport = async () => {
@@ -268,8 +186,14 @@ const MetaAnalysisNewPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">New Meta-Analysis</h1>
           </div>
           <p className="text-gray-600">
-            AI-powered systematic review with 9 specialized research agents
+            AI-powered systematic review with 6 specialized research agents
           </p>
+          {notificationsEnabled && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+              <Bell className="w-4 h-4" />
+              <span>Notifications enabled - you'll be notified when complete</span>
+            </div>
+          )}
         </motion.div>
 
         {/* Error Alert */}
@@ -290,7 +214,7 @@ const MetaAnalysisNewPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Form or Agent Pipeline */}
+        {/* Form or Progress Tracker */}
         {!analysisId ? (
           <motion.form
             onSubmit={handleSubmit}
@@ -464,14 +388,13 @@ const MetaAnalysisNewPage: React.FC = () => {
           </motion.form>
         ) : (
           <div className="space-y-6">
-            {/* Agent Pipeline */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <AgentPipeline steps={agentSteps} />
-            </motion.div>
+            {/* Progress Tracker */}
+            <ProgressTracker
+              taskId={analysisId}
+              taskType="meta-analysis"
+              title="Running Meta-Analysis"
+              onComplete={handleComplete}
+            />
 
             {/* Download Report Button */}
             {reportUrl && (
@@ -511,20 +434,6 @@ const MetaAnalysisNewPage: React.FC = () => {
                     Back to Dashboard
                   </motion.button>
                 </div>
-              </motion.div>
-            )}
-
-            {/* Executing Status */}
-            {isExecuting && !reportUrl && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-blue-50 rounded-xl p-4 border border-blue-200 flex items-center gap-3"
-              >
-                <Loader className="w-5 h-5 text-blue-600 animate-spin" />
-                <span className="text-sm font-medium text-blue-900">
-                  Analysis in progress... This may take several minutes.
-                </span>
               </motion.div>
             )}
           </div>

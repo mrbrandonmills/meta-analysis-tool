@@ -21,6 +21,7 @@ class AgentRole(str, Enum):
     VERIFICATION = "verification"
     SECURITY = "security"
     INTEGRITY = "integrity"
+    REVIEWER_MATCHING = "reviewer_matching"  # Expert reviewer matching
 
 
 class AgentStatus(str, Enum):

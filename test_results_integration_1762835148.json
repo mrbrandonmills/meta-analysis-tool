@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-11-10T20:25:48.788939",
+  "tests": {
+    "Database Setup": {
+      "status": "FAIL",
+      "message": "Database error: No module named 'sqlalchemy'",
+      "timestamp": "2025-11-10T20:25:48.791752"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

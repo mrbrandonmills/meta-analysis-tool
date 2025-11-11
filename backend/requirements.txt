@@ -67,6 +67,7 @@ Pillow==10.1.0
 # PDF Processing (REQUIRED for full-text screening)
 pdfplumber==0.10.3
 PyPDF2==3.0.1
+PyMuPDF==1.23.8  # For manuscript PDF metadata extraction
 
 # NOTE: Other heavy dependencies removed for faster builds:
 # - chromadb (vector database - not used in MVP)
