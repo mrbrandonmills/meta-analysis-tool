@@ -12,7 +12,7 @@ import json
 import logging
 
 from app.db.session import get_async_db
-from app.core.auth import get_current_user
+from app.core.security import get_current_user
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
