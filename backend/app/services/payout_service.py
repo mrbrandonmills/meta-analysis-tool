@@ -8,6 +8,7 @@ from uuid import UUID
 from loguru import logger
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import NoResultFound
 import stripe
 
 from app.models.payout_pool import PayoutPool, PayoutPoolStatus
@@ -16,6 +17,10 @@ from app.models.review_completion import ReviewCompletion, PayoutStatus
 from app.models.payout_distribution import PayoutDistribution, TransferStatus
 from app.models.researcher import Researcher
 from app.core.stripe_client import StripeService
+
+# SECURITY: PostgreSQL INTEGER column limit
+# Used to prevent integer overflow in payout calculations
+MAX_INT = 2_147_483_647  # PostgreSQL INTEGER max value ($21,474,836.47)
 
 
 class PayoutCalculationResult:
@@ -94,21 +99,33 @@ class PayoutService:
         """
         logger.info(f"Starting payout calculation for {pool_month} (dry_run={dry_run})")
 
-        # Step 1: Retrieve the payout pool
-        result = await db.execute(
-            select(PayoutPool).where(
-                PayoutPool.pool_month == pool_month,
-                PayoutPool.status == PayoutPoolStatus.OPEN
+        # Step 1: Retrieve the payout pool with row-level locking
+        # SECURITY FIX (CRITICAL-002): Use SELECT FOR UPDATE to prevent race conditions
+        # This ensures only one admin can process payouts at a time, preventing double-spending
+        try:
+            result = await db.execute(
+                select(PayoutPool)
+                .where(
+                    PayoutPool.pool_month == pool_month,
+                    PayoutPool.status == PayoutPoolStatus.OPEN
+                )
+                .with_for_update(nowait=True)  # Fail fast if another process holds the lock
             )
-        )
-        pool = result.scalar_one_or_none()
-
-        if not pool:
+            pool = result.scalar_one()
+        except NoResultFound:
             logger.error(f"No open pool found for {pool_month}")
             return PayoutCalculationResult(
                 pool_month=pool_month,
                 status='error',
                 reason='no_open_pool'
+            )
+        except Exception as e:
+            # This catches database lock errors (nowait=True throws exception if locked)
+            logger.error(f"Pool {pool_month} is locked by another process or error occurred: {e}")
+            return PayoutCalculationResult(
+                pool_month=pool_month,
+                status='error',
+                reason='pool_locked_or_unavailable'
             )
 
         # Step 2: Validate pool has contributions
@@ -194,7 +211,36 @@ class PayoutService:
 
             # Calculate total payout for this reviewer
             review_count = len(reviews)
+
+            # SECURITY FIX (CRITICAL-003): Validate for integer overflow
+            # PostgreSQL INTEGER max is 2,147,483,647. Ensure multiplication won't overflow.
+            if payout_per_review_cents > 0 and review_count > MAX_INT / payout_per_review_cents:
+                logger.error(
+                    f"Payout calculation overflow prevented: {payout_per_review_cents} * {review_count} "
+                    f"would exceed PostgreSQL INTEGER limit"
+                )
+                failed_distributions.append({
+                    'reviewer_id': str(reviewer_id),
+                    'reason': 'payout_calculation_overflow',
+                    'payout_per_review': payout_per_review_cents / 100,
+                    'review_count': review_count
+                })
+                continue
+
             total_payout_cents = payout_per_review_cents * review_count
+
+            # Additional validation: ensure result didn't overflow
+            if total_payout_cents > MAX_INT:
+                logger.error(
+                    f"Total payout {total_payout_cents} exceeds database INTEGER limit ({MAX_INT})"
+                )
+                failed_distributions.append({
+                    'reviewer_id': str(reviewer_id),
+                    'reason': 'total_payout_exceeds_limit',
+                    'total_payout': total_payout_cents / 100,
+                    'review_count': review_count
+                })
+                continue
 
             # Validate Stripe Connect account
             if not reviewer.stripe_connect_account_id:
@@ -220,17 +266,26 @@ class PayoutService:
             )
 
             if not dry_run:
-                # Step 8: Execute Stripe Connect transfer
+                # Step 8: Execute Stripe Connect transfer with idempotency
+                # SECURITY FIX (CRITICAL-004): Implement idempotency keys to prevent
+                # money loss if Stripe succeeds but database commit fails
+                idempotency_key = f"payout-{pool.id}-{reviewer_id}"
+
                 try:
-                    transfer = StripeService.create_transfer(
-                        connect_account_id=reviewer.stripe_connect_account_id,
-                        amount_cents=total_payout_cents,
+                    # Create transfer with idempotency key for safe retry
+                    transfer = stripe.Transfer.create(
+                        amount=total_payout_cents,
+                        currency='usd',
+                        destination=reviewer.stripe_connect_account_id,
                         description=f"Peer review payouts for {pool_month.strftime('%B %Y')}",
                         metadata={
                             'pool_month': str(pool_month),
+                            'pool_id': str(pool.id),
+                            'reviewer_id': str(reviewer_id),
                             'review_count': review_count,
                             'payout_per_review': payout_per_review_cents / 100
-                        }
+                        },
+                        idempotency_key=idempotency_key  # Ensures safe retry if DB fails
                     )
 
                     distribution.stripe_transfer_id = transfer.id
@@ -248,12 +303,17 @@ class PayoutService:
                     reviewer.lifetime_reviews_paid += review_count
                     reviewer.last_payout_date = date.today()
 
+                    # Commit database changes (if this fails, idempotency key allows safe retry)
+                    db.add(distribution)
+                    await db.flush()  # Ensure distribution is saved before continuing
+
                     logger.info(
-                        f"Transferred ${total_payout_cents/100:.2f} to {reviewer.name} "
-                        f"for {review_count} reviews"
+                        f"Transferred ${total_payout_cents/100:.2f} to reviewer {reviewer_id} "
+                        f"for {review_count} reviews (transfer_id: {transfer.id})"
                     )
 
                 except stripe.error.StripeError as e:
+                    await db.rollback()
                     logger.error(f"Stripe transfer failed for reviewer {reviewer_id}: {e}")
                     distribution.status = TransferStatus.FAILED
                     distribution.failure_reason = str(e)
@@ -261,6 +321,24 @@ class PayoutService:
                         'reviewer_id': str(reviewer_id),
                         'reviewer_name': reviewer.name,
                         'reason': str(e),
+                        'amount': total_payout_cents / 100,
+                        'review_count': review_count
+                    })
+
+                except Exception as e:
+                    # Database error after Stripe success
+                    # Idempotency key prevents double-transfer on retry
+                    await db.rollback()
+                    logger.error(
+                        f"Database error after Stripe transfer for reviewer {reviewer_id}: {e}. "
+                        f"Idempotency key {idempotency_key} allows safe retry."
+                    )
+                    distribution.status = TransferStatus.FAILED
+                    distribution.failure_reason = f"Database error: {str(e)}"
+                    failed_distributions.append({
+                        'reviewer_id': str(reviewer_id),
+                        'reviewer_name': reviewer.name if reviewer else 'Unknown',
+                        'reason': f'database_error_after_transfer: {str(e)}',
                         'amount': total_payout_cents / 100,
                         'review_count': review_count
                     })

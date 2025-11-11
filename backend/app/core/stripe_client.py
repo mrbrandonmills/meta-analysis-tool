@@ -11,6 +11,13 @@ from app.core.config import get_settings
 settings = get_settings()
 stripe.api_key = settings.stripe_secret_key
 
+# SECURITY: Hardcoded subscription tiers to prevent payment tampering
+# Never accept price_amount_cents from API callers to prevent users from
+# modifying subscription costs (e.g., paying $1 instead of $100)
+ALLOWED_SUBSCRIPTION_TIERS = {
+    "standard": 10000,  # $100/month ($80 platform + $20 reviewer pool)
+}
+
 
 class StripeService:
     """Service for interacting with Stripe API."""
@@ -44,21 +51,33 @@ class StripeService:
     def create_subscription(
         customer_id: str,
         payment_method_id: str,
-        price_amount_cents: int = 10000,
+        tier: str = "standard",
         metadata: Optional[Dict[str, Any]] = None
     ) -> stripe.Subscription:
         """
         Create a monthly subscription.
 
+        SECURITY: Only accepts tier name, not arbitrary amounts. This prevents
+        payment tampering where users could modify API requests to pay less.
+
         Args:
             customer_id: Stripe customer ID
             payment_method_id: Payment method ID
-            price_amount_cents: Subscription amount in cents (default $100)
+            tier: Subscription tier name (must be in ALLOWED_SUBSCRIPTION_TIERS)
             metadata: Additional metadata
 
         Returns:
             Stripe Subscription object
+
+        Raises:
+            ValueError: If tier is invalid
         """
+        # SECURITY FIX (CRITICAL-001): Validate tier and use hardcoded amount
+        if tier not in ALLOWED_SUBSCRIPTION_TIERS:
+            raise ValueError(f"Invalid subscription tier: {tier}. Allowed tiers: {list(ALLOWED_SUBSCRIPTION_TIERS.keys())}")
+
+        price_amount_cents = ALLOWED_SUBSCRIPTION_TIERS[tier]
+
         try:
             # Attach payment method to customer
             stripe.PaymentMethod.attach(
@@ -96,7 +115,7 @@ class StripeService:
                 metadata=metadata or {}
             )
 
-            logger.info(f"Created subscription {subscription.id} for customer {customer_id}")
+            logger.info(f"Created subscription {subscription.id} for customer {customer_id} with tier {tier} (${price_amount_cents/100:.2f})")
             return subscription
 
         except stripe.error.StripeError as e:
