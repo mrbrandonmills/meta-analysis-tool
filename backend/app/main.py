@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment
+from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction
 from app.core.config import get_settings
 from app.core.logging_config import configure_logging
 from app.core.middleware import (
@@ -169,8 +169,8 @@ async def root():
         "description": "AI-powered academic research platform with 4 tools",
         "tools": {
             "tool_1": "Meta-Analysis/Systematic Review Assistant (5/7 agents operational)",
-            "tool_2": "Research Direction Generator (planned)",
-            "tool_3": "Peer Review Quality Assistant (planned)",
+            "tool_2": "Research Direction Generator (operational)",
+            "tool_3": "Peer Review Quality Assistant (operational)",
             "tool_4": "Expert Reviewer Matcher (operational)",
         },
         "agents_available": 5,
@@ -192,6 +192,7 @@ app.include_router(peer_reviews.router, prefix="/api/v1", tags=["peer-reviews"])
 app.include_router(researchers.router, prefix="/api/v1", tags=["researchers"])
 app.include_router(researcher_enrichment.router, prefix="/api/v1", tags=["researcher-enrichment"])
 app.include_router(reviewer_matcher.router, prefix="/api/v1", tags=["reviewer-matcher"])
+app.include_router(research_direction.router, prefix="/api/v1", tags=["research-direction"])
 app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 
 

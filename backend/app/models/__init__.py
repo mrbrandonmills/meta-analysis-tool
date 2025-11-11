@@ -19,6 +19,7 @@ from app.models.peer_review import PeerReview, ReviewRecommendation, ReviewStatu
 from app.models.reviewer_match import ReviewerMatch, MatchStatus, ConflictType
 from app.models.research_gap import ResearchGap, GapType, GapPriority
 from app.models.research_proposal import ResearchProposal, ProposalStatus, ProposalType
+from app.models.research_direction import ResearchDirection
 from app.models.meta_analysis import MetaAnalysis, CoordinatorState, AgentExecution, MetaAnalysisStatus
 from app.models.report import Report, ReportTemplate, ReportFormat, ReportStatus
 from app.models.associations import project_papers, project_researchers, paper_authors
@@ -75,6 +76,7 @@ __all__ = [
     "ResearchProposal",
     "ProposalStatus",
     "ProposalType",
+    "ResearchDirection",
     # Report models
     "Report",
     "ReportTemplate",

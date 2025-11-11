@@ -12,6 +12,7 @@ from .search_agent_v2 import SearchAgentV2
 from .screening_agent_v2 import ScreeningAgentV2
 from .credibility_agent_v2 import CredibilityAgentV2
 from .reviewer_matching_agent import ReviewerMatchingAgent
+from .research_direction_agent import ResearchDirectionAgent
 
 __all__ = [
     "CoordinatorAgent",
@@ -26,4 +27,5 @@ __all__ = [
     "ScreeningAgentV2",
     "CredibilityAgentV2",
     "ReviewerMatchingAgent",
+    "ResearchDirectionAgent",
 ]
