@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.services.apa_report_generator import APAReportGenerator, ReportFormat as APAFormat
+from app.services.apa_report_generator import APAReportGenerator
 from app.models.report import Report, ReportTemplate, ReportFormat, ReportStatus
 from app.db.base import get_db
 
