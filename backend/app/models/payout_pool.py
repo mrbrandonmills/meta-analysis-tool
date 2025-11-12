@@ -49,7 +49,12 @@ class PayoutPool(Base, BaseModel):
     payout_per_review_cents = Column(Integer, nullable=True)  # Calculated on pool close
 
     # Status
-    status = Column(SQLEnum(PayoutPoolStatus), nullable=False, default=PayoutPoolStatus.OPEN, index=True)
+    status = Column(
+        SQLEnum(PayoutPoolStatus, name='payoutpoolstatus', native_enum=True),
+        nullable=False,
+        default=PayoutPoolStatus.OPEN,
+        index=True
+    )
     calculated_at = Column(DateTime, nullable=True)
     distributed_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, nullable=True)
