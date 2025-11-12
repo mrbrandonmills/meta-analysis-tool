@@ -50,7 +50,7 @@ class PayoutPool(Base, BaseModel):
 
     # Status
     status = Column(
-        SQLEnum(PayoutPoolStatus, name='payoutpoolstatus', native_enum=True),
+        SQLEnum(PayoutPoolStatus, values_callable=lambda x: [e.value for e in x], name='payoutpoolstatus', native_enum=True),
         nullable=False,
         default=PayoutPoolStatus.OPEN,
         index=True
