@@ -36,7 +36,7 @@ class ReviewCompletion(Base, BaseModel):
     # Foreign Keys
     pool_id = Column(UUID(as_uuid=True), ForeignKey("payout_pools.id", ondelete="CASCADE"), nullable=False, index=True)
     peer_review_id = Column(UUID(as_uuid=True), ForeignKey("peer_reviews.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("researchers.id", ondelete="CASCADE"), nullable=False, index=True)
+    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("researchers.id", ondelete="CASCADE"), nullable=True, index=True)
     manuscript_id = Column(UUID(as_uuid=True), ForeignKey("manuscripts.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Approval Details
