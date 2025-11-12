@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends
 from loguru import logger
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentConfig, AgentOrchestrator
@@ -18,7 +19,7 @@ from app.agents.specialized import (
 )
 from app.db.session import get_async_db
 from app.models.paper import Paper
-from app.models.pdf_metadata import PDFMetadata, PDFDownloadStatus, FullTextExtraction
+from app.models.pdf_metadata import PDFMetadata, PDFDownloadStatus, FullTextExtraction, FullTextScreening
 from app.models.meta_analysis import MetaAnalysisStatus
 from app.services.pdf_download_service import PDFDownloadService
 from app.services.pdf_text_extractor import PDFTextExtractor
@@ -81,7 +82,8 @@ async def create_meta_analysis(
         # TODO: Get user_id from authentication
         # For now, create a dummy user if none exists
         from app.models.user import User
-        user = db.query(User).first()
+        result = await db.execute(select(User))
+        user = result.scalar_one_or_none()
         if not user:
             # Create a default user for development
             user = User(
@@ -90,7 +92,7 @@ async def create_meta_analysis(
                 full_name="Default User",
             )
             db.add(user)
-            db.flush()
+            await db.flush()
 
         # Create meta-analysis database record
         meta_analysis = service.create_meta_analysis(
@@ -117,14 +119,14 @@ async def create_meta_analysis(
         result = await coordinator.process(request.model_dump())
 
         # Save coordinator state to database
-        service.save_coordinator_state(
+        await service.save_coordinator_state(
             analysis_id=meta_analysis.id,
             coordinator=coordinator,
             workflow_plan=result,
         )
 
         # Update status to workflow_created
-        service.update_meta_analysis_status(
+        await service.update_meta_analysis_status(
             analysis_id=meta_analysis.id,
             status=MetaAnalysisStatus.WORKFLOW_CREATED,
         )
@@ -140,7 +142,7 @@ async def create_meta_analysis(
             status="success",
         )
 
-        db.commit()
+        await db.commit()
 
         logger.info(f"Created and persisted meta-analysis {meta_analysis.id}")
 
@@ -153,7 +155,7 @@ async def create_meta_analysis(
 
     except Exception as e:
         logger.error(f"Error creating meta-analysis: {e}")
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -179,7 +181,7 @@ async def execute_meta_analysis(
 
         # Get meta-analysis from database
         analysis_uuid = UUID(analysis_id)
-        meta_analysis = service.get_meta_analysis(analysis_uuid)
+        meta_analysis = await service.get_meta_analysis(analysis_uuid)
         if not meta_analysis:
             logger.error(f"Meta-analysis not found: {analysis_id}")
             raise HTTPException(
@@ -193,7 +195,7 @@ async def execute_meta_analysis(
             role="coordinator",  # type: ignore
             expert_profile=meta_analysis.expert_name,
         )
-        coordinator = service.restore_coordinator(analysis_uuid, coordinator_config)
+        coordinator = await service.restore_coordinator(analysis_uuid, coordinator_config)
         if not coordinator:
             logger.error(f"Coordinator state not found for analysis_id: {analysis_id}")
             raise HTTPException(
@@ -202,7 +204,7 @@ async def execute_meta_analysis(
             )
 
         # Update status to in_progress
-        service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.IN_PROGRESS)
+        await service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.IN_PROGRESS)
 
         # Initialize search agent
         search_config = AgentConfig(name="SearchAgent", role="search")  # type: ignore
@@ -290,13 +292,13 @@ async def execute_meta_analysis(
         )
 
         # Update coordinator state with progress
-        service.save_coordinator_state(
+        await service.save_coordinator_state(
             analysis_id=analysis_uuid,
             coordinator=coordinator,
         )
 
         # Commit all changes
-        db.commit()
+        await db.commit()
 
         return {
             "analysis_id": analysis_id,
@@ -325,7 +327,7 @@ async def execute_meta_analysis(
 
     except Exception as e:
         logger.error(f"Error executing meta-analysis: {e}")
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -337,7 +339,7 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
 
         # Get meta-analysis from database
         analysis_uuid = UUID(analysis_id)
-        meta_analysis = service.get_meta_analysis(analysis_uuid)
+        meta_analysis = await service.get_meta_analysis(analysis_uuid)
         if not meta_analysis:
             logger.error(f"Meta-analysis not found: {analysis_id}")
             raise HTTPException(
@@ -346,7 +348,7 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
             )
 
         # Get coordinator state
-        coordinator_state = service.get_coordinator_state(analysis_uuid)
+        coordinator_state = await service.get_coordinator_state(analysis_uuid)
 
         return {
             "id": analysis_id,
@@ -515,20 +517,21 @@ async def download_pdfs(
 
         # Get papers to download
         if request.paper_ids:
-            papers = db.query(Paper).filter(Paper.id.in_(request.paper_ids)).all()
+            result = await db.execute(select(Paper).where(Paper.id.in_(request.paper_ids)))
+            papers = result.scalars().all()
         else:
             # Get all papers for this analysis (simplified - in production, link to Project)
             # For now, get papers that don't have PDFs yet
-            papers = (
-                db.query(Paper)
+            result = await db.execute(
+                select(Paper)
                 .outerjoin(PDFMetadata, Paper.id == PDFMetadata.paper_id)
-                .filter(
+                .where(
                     (PDFMetadata.id == None) |
                     (PDFMetadata.download_status != PDFDownloadStatus.SUCCESS)
                 )
                 .limit(100)  # Safety limit
-                .all()
             )
+            papers = result.scalars().all()
 
         if not papers:
             return PDFDownloadResponse(
@@ -578,7 +581,8 @@ async def get_pdf_status(analysis_id: str, db: AsyncSession = Depends(get_async_
         logger.info(f"Checking PDF status for analysis {analysis_id}")
 
         # Get all PDF metadata (simplified - should filter by analysis)
-        pdf_metadata_list = db.query(PDFMetadata).all()
+        result = await db.execute(select(PDFMetadata))
+        pdf_metadata_list = result.scalars().all()
 
         # Calculate statistics
         total = len(pdf_metadata_list)
@@ -650,14 +654,14 @@ async def extract_text(analysis_id: str, db: AsyncSession = Depends(get_async_db
         logger.info(f"Starting text extraction for analysis {analysis_id}")
 
         # Get PDFs ready for extraction
-        pdf_metadata_list = (
-            db.query(PDFMetadata)
-            .filter(
+        result = await db.execute(
+            select(PDFMetadata)
+            .where(
                 PDFMetadata.download_status == PDFDownloadStatus.SUCCESS,
                 PDFMetadata.extraction_status.in_(["pending", "failed"])
             )
-            .all()
         )
+        pdf_metadata_list = result.scalars().all()
 
         if not pdf_metadata_list:
             return {
@@ -706,12 +710,12 @@ async def full_text_screen(
         logger.info(f"Starting full-text screening for analysis {analysis_id}")
 
         # Get all full-text extractions
-        extractions = (
-            db.query(FullTextExtraction)
+        result = await db.execute(
+            select(FullTextExtraction)
             .join(PDFMetadata)
-            .filter(PDFMetadata.extraction_status == "completed")
-            .all()
+            .where(PDFMetadata.extraction_status == "completed")
         )
+        extractions = result.scalars().all()
 
         if not extractions:
             raise HTTPException(
@@ -761,7 +765,7 @@ async def full_text_screen(
             )
             db.add(screening_record)
 
-        db.commit()
+        await db.commit()
 
         return FullTextScreeningResponse(
             analysis_id=analysis_id,
@@ -791,16 +795,17 @@ async def get_study_full_text(study_id: str, db: AsyncSession = Depends(get_asyn
     """
     try:
         # Get paper
-        paper = db.query(Paper).filter(Paper.id == study_id).first()
+        result = await db.execute(select(Paper).where(Paper.id == study_id))
+        paper = result.scalar_one_or_none()
         if not paper:
             raise HTTPException(status_code=404, detail="Study not found")
 
         # Get PDF metadata
-        pdf_metadata = (
-            db.query(PDFMetadata)
-            .filter(PDFMetadata.paper_id == study_id)
-            .first()
+        result = await db.execute(
+            select(PDFMetadata)
+            .where(PDFMetadata.paper_id == study_id)
         )
+        pdf_metadata = result.scalar_one_or_none()
 
         if not pdf_metadata:
             return {
@@ -810,11 +815,11 @@ async def get_study_full_text(study_id: str, db: AsyncSession = Depends(get_asyn
             }
 
         # Get extraction
-        extraction = (
-            db.query(FullTextExtraction)
-            .filter(FullTextExtraction.pdf_metadata_id == pdf_metadata.id)
-            .first()
+        result = await db.execute(
+            select(FullTextExtraction)
+            .where(FullTextExtraction.pdf_metadata_id == pdf_metadata.id)
         )
+        extraction = result.scalar_one_or_none()
 
         if not extraction:
             return {
@@ -825,11 +830,11 @@ async def get_study_full_text(study_id: str, db: AsyncSession = Depends(get_asyn
             }
 
         # Get screening results
-        screening = (
-            db.query(FullTextScreening)
-            .filter(FullTextScreening.full_text_extraction_id == extraction.id)
-            .first()
+        result = await db.execute(
+            select(FullTextScreening)
+            .where(FullTextScreening.full_text_extraction_id == extraction.id)
         )
+        screening = result.scalar_one_or_none()
 
         return {
             "study_id": study_id,

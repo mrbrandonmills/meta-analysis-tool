@@ -5,7 +5,8 @@ from typing import Optional, Dict, Any
 from uuid import UUID
 
 from loguru import logger
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.specialized import CoordinatorAgent
 from app.models.meta_analysis import MetaAnalysis, CoordinatorState, AgentExecution, MetaAnalysisStatus
@@ -14,7 +15,7 @@ from app.models.meta_analysis import MetaAnalysis, CoordinatorState, AgentExecut
 class MetaAnalysisService:
     """Service for persisting and retrieving meta-analysis state."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         """Initialize service with database session."""
         self.db = db
 
@@ -62,7 +63,7 @@ class MetaAnalysisService:
 
         return meta_analysis
 
-    def save_coordinator_state(
+    async def save_coordinator_state(
         self,
         analysis_id: UUID,
         coordinator: CoordinatorAgent,
@@ -79,11 +80,11 @@ class MetaAnalysisService:
             Created or updated CoordinatorState instance
         """
         # Check if state already exists
-        existing_state = (
-            self.db.query(CoordinatorState)
-            .filter(CoordinatorState.analysis_id == analysis_id)
-            .first()
+        result = await self.db.execute(
+            select(CoordinatorState)
+            .where(CoordinatorState.analysis_id == analysis_id)
         )
+        existing_state = result.scalar_one_or_none()
 
         # Serialize coordinator state
         agent_state = self._serialize_coordinator_state(coordinator)
@@ -109,10 +110,10 @@ class MetaAnalysisService:
             self.db.add(coordinator_state)
             logger.info(f"Created coordinator state for analysis {analysis_id}")
 
-        self.db.flush()
+        await self.db.flush()
         return coordinator_state
 
-    def get_meta_analysis(self, analysis_id: UUID) -> Optional[MetaAnalysis]:
+    async def get_meta_analysis(self, analysis_id: UUID) -> Optional[MetaAnalysis]:
         """Retrieve a meta-analysis by ID.
 
         Args:
@@ -121,13 +122,13 @@ class MetaAnalysisService:
         Returns:
             MetaAnalysis instance or None if not found
         """
-        return (
-            self.db.query(MetaAnalysis)
-            .filter(MetaAnalysis.id == analysis_id)
-            .first()
+        result = await self.db.execute(
+            select(MetaAnalysis)
+            .where(MetaAnalysis.id == analysis_id)
         )
+        return result.scalar_one_or_none()
 
-    def get_coordinator_state(self, analysis_id: UUID) -> Optional[CoordinatorState]:
+    async def get_coordinator_state(self, analysis_id: UUID) -> Optional[CoordinatorState]:
         """Retrieve coordinator state for a meta-analysis.
 
         Args:
@@ -136,13 +137,13 @@ class MetaAnalysisService:
         Returns:
             CoordinatorState instance or None if not found
         """
-        return (
-            self.db.query(CoordinatorState)
-            .filter(CoordinatorState.analysis_id == analysis_id)
-            .first()
+        result = await self.db.execute(
+            select(CoordinatorState)
+            .where(CoordinatorState.analysis_id == analysis_id)
         )
+        return result.scalar_one_or_none()
 
-    def restore_coordinator(
+    async def restore_coordinator(
         self,
         analysis_id: UUID,
         coordinator_config: Any,
@@ -156,7 +157,7 @@ class MetaAnalysisService:
         Returns:
             Restored CoordinatorAgent instance or None if state not found
         """
-        state = self.get_coordinator_state(analysis_id)
+        state = await self.get_coordinator_state(analysis_id)
         if not state:
             logger.warning(f"No coordinator state found for analysis {analysis_id}")
             return None
@@ -181,7 +182,7 @@ class MetaAnalysisService:
         logger.info(f"Restored coordinator {coordinator.id} for analysis {analysis_id}")
         return coordinator
 
-    def update_meta_analysis_status(
+    async def update_meta_analysis_status(
         self,
         analysis_id: UUID,
         status: MetaAnalysisStatus,
@@ -195,10 +196,10 @@ class MetaAnalysisService:
         Returns:
             Updated MetaAnalysis instance or None if not found
         """
-        meta_analysis = self.get_meta_analysis(analysis_id)
+        meta_analysis = await self.get_meta_analysis(analysis_id)
         if meta_analysis:
             meta_analysis.status = status
-            self.db.flush()
+            await self.db.flush()
             logger.info(f"Updated meta-analysis {analysis_id} status to {status}")
         return meta_analysis
 
