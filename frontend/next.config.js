@@ -3,7 +3,6 @@ const path = require('path')
 
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
 
   // Webpack configuration for path aliases
   webpack: (config) => {
