@@ -19,7 +19,8 @@ import {
   Target,
   Search,
   Brain,
-  TrendingUp
+  TrendingUp,
+  Users
 } from 'lucide-react'
 
 // ============================================================================
