@@ -118,7 +118,7 @@ const Hero: React.FC = () => {
             className="group relative px-8 py-4 bg-primary-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-glow-primary transition-all duration-300"
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/onboarding/researcher')}
           >
             <span className="flex items-center gap-2">
               Get Started Free
