@@ -1,7 +1,7 @@
 """Add report and report_template tables
 
 Revision ID: 005_add_report_tables
-Revises: 004_add_meta_analysis_tables
+Revises: 004
 Create Date: 2024-11-06 14:40:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '005_add_report_tables'
-down_revision = '004_add_meta_analysis_tables'
+down_revision = '004'
 branch_labels = None
 depends_on = None
 
