@@ -36,15 +36,27 @@ def hash_password(password: str) -> str:
 
 def create_users(db: Session) -> List[User]:
     """Create sample users."""
+    from app.core.security import UserRole
+
     users = [
         User(
             id=uuid.uuid4(),
             email="admin@academic-platform.com",
             hashed_password=hash_password("Admin123!"),
-            full_name="Admin User",
-            name="Admin User",
+            full_name="Master Admin",
             institution="Platform Administration",
-            role="ADMIN",
+            role=UserRole.ADMIN,
+            is_active=True,
+            is_verified=True,
+            is_superuser=True,
+        ),
+        User(
+            id=uuid.uuid4(),
+            email="master@meta-analysis.com",
+            hashed_password=hash_password("MasterAdmin2024!"),
+            full_name="Platform Master Admin",
+            institution="Meta-Analysis Platform HQ",
+            role=UserRole.ADMIN,
             is_active=True,
             is_verified=True,
             is_superuser=True,
@@ -54,21 +66,18 @@ def create_users(db: Session) -> List[User]:
             email="researcher@stanford.edu",
             hashed_password=hash_password("Research123!"),
             full_name="Dr. Sarah Chen",
-            name="Sarah Chen",
             institution="Stanford University",
-            role="RESEARCHER",
+            role=UserRole.RESEARCHER,
             is_active=True,
             is_verified=True,
-            orcid="0000-0001-2345-6789",
         ),
         User(
             id=uuid.uuid4(),
             email="editor@nature.com",
             hashed_password=hash_password("Editor123!"),
             full_name="Dr. James Wilson",
-            name="James Wilson",
             institution="Nature Publishing Group",
-            role="EDITOR",
+            role=UserRole.EDITOR,
             is_active=True,
             is_verified=True,
         ),
@@ -77,12 +86,10 @@ def create_users(db: Session) -> List[User]:
             email="reviewer@mit.edu",
             hashed_password=hash_password("Review123!"),
             full_name="Dr. Maria Rodriguez",
-            name="Maria Rodriguez",
             institution="MIT",
-            role="REVIEWER",
+            role=UserRole.REVIEWER,
             is_active=True,
             is_verified=True,
-            orcid="0000-0002-3456-7890",
         ),
     ]
 
@@ -618,9 +625,14 @@ def seed_database():
         print("=" * 60)
         print("\nSample Login Credentials:")
         print("-" * 60)
-        print("Admin User:")
+        print("MASTER ADMIN ACCOUNTS:")
         print("  Email: admin@academic-platform.com")
         print("  Password: Admin123!")
+        print("")
+        print("  Email: master@meta-analysis.com")
+        print("  Password: MasterAdmin2024!")
+        print("")
+        print("REGULAR USERS:")
         print("\nResearcher:")
         print("  Email: researcher@stanford.edu")
         print("  Password: Research123!")

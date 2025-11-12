@@ -8,11 +8,13 @@ import {
 export interface UsePayoutsReturn {
   earnings: EarningsSummary | null;
   currentPool: PayoutPool | null;
+  poolHistory: PayoutPool[];
   distributions: PayoutDistribution[];
   loading: boolean;
   error: string | null;
   fetchEarnings: () => Promise<void>;
   fetchCurrentPool: () => Promise<void>;
+  fetchPoolHistory: () => Promise<void>;
   fetchPoolByMonth: (month: string, year: number) => Promise<PayoutPool>;
   fetchDistributions: (poolId: string) => Promise<void>;
 }
@@ -20,6 +22,7 @@ export interface UsePayoutsReturn {
 export function usePayouts(): UsePayoutsReturn {
   const [earnings, setEarnings] = useState<EarningsSummary | null>(null);
   const [currentPool, setCurrentPool] = useState<PayoutPool | null>(null);
+  const [poolHistory, setPoolHistory] = useState<PayoutPool[]>([]);
   const [distributions, setDistributions] = useState<PayoutDistribution[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,14 +127,39 @@ export function usePayouts(): UsePayoutsReturn {
     }
   }, []);
 
+  const fetchPoolHistory = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/v1/payouts/pool-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch pool history');
+      }
+
+      const data = await response.json();
+      setPoolHistory(data.pools || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     earnings,
     currentPool,
+    poolHistory,
     distributions,
     loading,
     error,
     fetchEarnings,
     fetchCurrentPool,
+    fetchPoolHistory,
     fetchPoolByMonth,
     fetchDistributions
   };

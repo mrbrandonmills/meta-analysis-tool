@@ -29,6 +29,8 @@ from app.models.payout_pool import PayoutPool, PayoutPoolStatus
 from app.models.payout_contribution import PayoutContribution, ContributionStatus
 from app.models.review_completion import ReviewCompletion, PayoutStatus
 from app.models.payout_distribution import PayoutDistribution, TransferStatus
+# Admin models
+from app.models.admin_action import AdminAction, AdminActionType
 
 __all__ = [
     # Base models and mixins
@@ -103,4 +105,7 @@ __all__ = [
     "PayoutStatus",
     "PayoutDistribution",
     "TransferStatus",
+    # Admin models
+    "AdminAction",
+    "AdminActionType",
 ]

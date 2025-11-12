@@ -424,6 +424,64 @@ async def delete_api_key(
     return None
 
 
+@router.post("/admin-login", response_model=Token)
+async def admin_login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Master admin login endpoint with elevated validation.
+
+    - **username**: Admin's email address
+    - **password**: Admin's password
+
+    Returns access and refresh tokens with admin role.
+    Only users with ADMIN role can use this endpoint.
+    """
+    # Find user by email
+    result = await db.execute(select(User).where(User.email == form_data.username))
+    user = result.scalar_one_or_none()
+
+    # Verify user exists and password is correct
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        logger.warning(f"Failed admin login attempt for: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verify user has admin role
+    if user.role != UserRole.ADMIN:
+        logger.warning(f"Non-admin user attempted admin login: {user.email}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Admin privileges required."
+        )
+
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive. Please contact support."
+        )
+
+    # Update last login time
+    user.last_login = datetime.utcnow()
+    await db.commit()
+
+    # Create token pair
+    tokens = create_token_pair(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role
+    )
+
+    logger.info(f"Admin logged in: {user.email}")
+
+    return tokens
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     token: TokenData = Depends(get_current_user_token)
