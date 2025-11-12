@@ -67,7 +67,7 @@ async def get_current_payout_pool(db: AsyncSession) -> PayoutPool:
     result = await db.execute(
         select(PayoutPool).where(
             PayoutPool.pool_month == current_month,
-            PayoutPool.status == PayoutPoolStatus.OPEN
+            PayoutPool.status == PayoutPoolStatus.OPEN.value
         )
     )
     pool = result.scalar_one_or_none()
@@ -75,7 +75,7 @@ async def get_current_payout_pool(db: AsyncSession) -> PayoutPool:
     if not pool:
         pool = PayoutPool(
             pool_month=current_month,
-            status=PayoutPoolStatus.OPEN
+            status=PayoutPoolStatus.OPEN.value
         )
         db.add(pool)
         await db.commit()

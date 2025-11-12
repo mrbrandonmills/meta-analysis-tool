@@ -107,7 +107,7 @@ class PayoutService:
                 select(PayoutPool)
                 .where(
                     PayoutPool.pool_month == pool_month,
-                    PayoutPool.status == PayoutPoolStatus.OPEN
+                    PayoutPool.status == PayoutPoolStatus.OPEN.value
                 )
                 .with_for_update(nowait=True)  # Fail fast if another process holds the lock
             )
@@ -392,7 +392,7 @@ class PayoutService:
         if not next_pool:
             next_pool = PayoutPool(
                 pool_month=next_month,
-                status=PayoutPoolStatus.OPEN
+                status=PayoutPoolStatus.OPEN.value
             )
             db.add(next_pool)
 
@@ -425,7 +425,7 @@ class PayoutService:
         if not existing:
             new_pool = PayoutPool(
                 pool_month=next_month,
-                status=PayoutPoolStatus.OPEN
+                status=PayoutPoolStatus.OPEN.value
             )
             db.add(new_pool)
             await db.commit()
@@ -479,7 +479,7 @@ class PayoutService:
         result = await db.execute(
             select(PayoutPool).where(
                 PayoutPool.pool_month == current_month,
-                PayoutPool.status == PayoutPoolStatus.OPEN
+                PayoutPool.status == PayoutPoolStatus.OPEN.value
             )
         )
         current_pool = result.scalar_one_or_none()
