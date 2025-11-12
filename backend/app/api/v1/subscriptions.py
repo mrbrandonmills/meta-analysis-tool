@@ -154,7 +154,7 @@ async def create_subscription(
         stripe_subscription = StripeService.create_subscription(
             customer_id=user.stripe_customer_id,
             payment_method_id=subscription_data.payment_method_id,
-            price_amount_cents=10000,  # $100
+            tier="standard",
             metadata={
                 'user_id': str(user.id),
                 'payout_contribution_cents': 2000
