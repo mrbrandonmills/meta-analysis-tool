@@ -195,13 +195,13 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway up --service backend --environment production
+          railway up --service meta-analysis-tool --environment production
 
       - name: Run database migrations
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway run --service backend --environment production \
+          railway run --service meta-analysis-tool --environment production \
             alembic upgrade head
 
   # Deploy to Vercel
