@@ -2,6 +2,7 @@ import React from 'react'
 import Head from 'next/head'
 import Hero from '@/components/landing/Hero'
 import FeaturesShowcase from '@/components/landing/FeaturesShowcase'
+import { HighlightDemo } from '@/components/demo/HighlightDemo'
 
 const LandingPage: React.FC = () => {
   return (
@@ -19,6 +20,11 @@ const LandingPage: React.FC = () => {
       <main className="min-h-screen">
         <Hero />
         <FeaturesShowcase />
+
+        {/* ESPN-Style Highlight Demo */}
+        <section className="relative h-screen bg-black">
+          <HighlightDemo autoPlay={true} />
+        </section>
       </main>
     </>
   )
