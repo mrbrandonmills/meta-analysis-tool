@@ -44,11 +44,11 @@ http_bearer = HTTPBearer(auto_error=False)
 class UserRole(str, Enum):
     """User roles in the system."""
 
-    ADMIN = "admin"  # Full system access
-    EDITOR = "editor"  # Can edit and approve content
-    RESEARCHER = "researcher"  # Can create and manage own projects
-    REVIEWER = "reviewer"  # Can review and comment on projects
-    VIEWER = "viewer"  # Read-only access
+    ADMIN = "ADMIN"  # Full system access
+    EDITOR = "EDITOR"  # Can edit and approve content
+    RESEARCHER = "RESEARCHER"  # Can create and manage own projects
+    REVIEWER = "REVIEWER"  # Can review and comment on projects
+    VIEWER = "VIEWER"  # Read-only access
 
 
 # Token types
