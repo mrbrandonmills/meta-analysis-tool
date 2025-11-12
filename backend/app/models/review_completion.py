@@ -54,7 +54,12 @@ class ReviewCompletion(Base, BaseModel):
     ineligibility_reason = Column(Text, nullable=True)
 
     # Payout Status
-    payout_status = Column(SQLEnum(PayoutStatus), nullable=False, default=PayoutStatus.PENDING, index=True)
+    payout_status = Column(
+        SQLEnum(PayoutStatus, values_callable=lambda x: [e.value for e in x], name='payoutstatus', native_enum=True),
+        nullable=False,
+        default=PayoutStatus.PENDING,
+        index=True
+    )
     payout_amount_cents = Column(Integer, nullable=True)
     distributed_at = Column(DateTime, nullable=True)
 
