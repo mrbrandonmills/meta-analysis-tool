@@ -30,6 +30,10 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.vercel
+*.env.vercel
+.env.production
+.env.development
 
 # IDEs
 .vscode/
