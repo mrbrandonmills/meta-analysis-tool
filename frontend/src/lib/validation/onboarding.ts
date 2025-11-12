@@ -18,7 +18,7 @@ export interface ValidationResult {
 /**
  * Validate Step 1: Basic Information
  */
-export function validateBasicInfo(data: OnboardingData['basicInfo']): ValidationResult {
+export function validateBasicInfo(data: Partial<OnboardingData['basicInfo']>): ValidationResult {
   const errors: ValidationErrors = {};
 
   // Full Name
@@ -71,7 +71,7 @@ export function validateBasicInfo(data: OnboardingData['basicInfo']): Validation
  * Validate Step 2: Academic Profile (all fields optional)
  */
 export function validateAcademicProfile(
-  data: OnboardingData['academicProfile']
+  data: Partial<OnboardingData['academicProfile']>
 ): ValidationResult {
   const errors: ValidationErrors = {};
 
@@ -129,7 +129,7 @@ export function validateAcademicProfile(
  * Validate Step 3: Research Expertise
  */
 export function validateResearchExpertise(
-  data: OnboardingData['researchExpertise']
+  data: Partial<OnboardingData['researchExpertise']>
 ): ValidationResult {
   const errors: ValidationErrors = {};
 
@@ -179,7 +179,7 @@ export function validateResearchExpertise(
  * Validate Step 4: Review Experience
  */
 export function validateReviewExperience(
-  data: OnboardingData['reviewExperience']
+  data: Partial<OnboardingData['reviewExperience']>
 ): ValidationResult {
   const errors: ValidationErrors = {};
 
@@ -226,7 +226,7 @@ export function validateReviewExperience(
 /**
  * Validate Step 5: Payment
  */
-export function validatePaymentInfo(data: OnboardingData['payment']): ValidationResult {
+export function validatePaymentInfo(data: Partial<OnboardingData['payment']>): ValidationResult {
   const errors: ValidationErrors = {};
 
   // Payment Method ID (would be set by Stripe)

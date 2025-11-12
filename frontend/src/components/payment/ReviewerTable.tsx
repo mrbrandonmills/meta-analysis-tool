@@ -88,7 +88,10 @@ export const ReviewerTable: React.FC<ReviewerTableProps> = ({
           : bVal.localeCompare(aVal);
       }
 
-      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      // Type assertion: at this point, both values are numbers
+      const numA = aVal as number;
+      const numB = bVal as number;
+      return sortDirection === 'asc' ? numA - numB : numB - numA;
     });
 
     return filtered;

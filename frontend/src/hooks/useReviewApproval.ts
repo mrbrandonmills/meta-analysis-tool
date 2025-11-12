@@ -5,7 +5,7 @@ import {
   ReviewApprovalResponse
 } from '@/lib/payment-types';
 
-interface UseReviewApprovalReturn {
+export interface UseReviewApprovalReturn {
   pendingReviews: PendingReview[];
   loading: boolean;
   error: string | null;

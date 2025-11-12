@@ -5,7 +5,7 @@ import {
   SubscriptionResponse
 } from '@/lib/payment-types';
 
-interface UseSubscriptionReturn {
+export interface UseSubscriptionReturn {
   subscription: Subscription | null;
   loading: boolean;
   error: string | null;

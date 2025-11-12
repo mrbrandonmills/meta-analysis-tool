@@ -9,7 +9,7 @@ import {
   ReviewExperience,
   PaymentInfo,
 } from '@/types/onboarding';
-import { api } from '@/lib/api';
+import { apiClient } from '@/lib/api';
 
 const ONBOARDING_STORAGE_KEY = 'researcher_onboarding_data';
 
@@ -33,20 +33,7 @@ interface UseOnboardingReturn {
 export function useOnboarding(): UseOnboardingReturn {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<OnboardingData>>({
-    basicInfo: {},
-    academicProfile: {},
-    researchExpertise: {
-      primaryDomains: [],
-      keywords: [],
-      methodologies: [],
-    },
-    reviewExperience: {
-      journalsReviewedFor: [],
-      languages: [],
-    },
-    payment: {},
-  });
+  const [formData, setFormData] = useState<Partial<OnboardingData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,7 +81,7 @@ export function useOnboarding(): UseOnboardingReturn {
         ...prev.basicInfo,
         ...data,
       },
-    }));
+    } as Partial<OnboardingData>));
   }, []);
 
   const updateAcademicProfile = useCallback((data: Partial<AcademicProfile>) => {
@@ -104,7 +91,7 @@ export function useOnboarding(): UseOnboardingReturn {
         ...prev.academicProfile,
         ...data,
       },
-    }));
+    } as Partial<OnboardingData>));
   }, []);
 
   const updateResearchExpertise = useCallback((data: Partial<ResearchExpertise>) => {
@@ -114,7 +101,7 @@ export function useOnboarding(): UseOnboardingReturn {
         ...prev.researchExpertise,
         ...data,
       },
-    }));
+    } as Partial<OnboardingData>));
   }, []);
 
   const updateReviewExperience = useCallback((data: Partial<ReviewExperience>) => {
@@ -124,7 +111,7 @@ export function useOnboarding(): UseOnboardingReturn {
         ...prev.reviewExperience,
         ...data,
       },
-    }));
+    } as Partial<OnboardingData>));
   }, []);
 
   const updatePaymentInfo = useCallback((data: Partial<PaymentInfo>) => {
@@ -134,7 +121,7 @@ export function useOnboarding(): UseOnboardingReturn {
         ...prev.payment,
         ...data,
       },
-    }));
+    } as Partial<OnboardingData>));
   }, []);
 
   const submitOnboarding = useCallback(async () => {
@@ -152,7 +139,7 @@ export function useOnboarding(): UseOnboardingReturn {
       }
 
       // Step 1: Create subscription
-      const subscriptionResponse = await api.post('/subscriptions/create', {
+      const subscriptionResponse = await apiClient.post('/subscriptions/create', {
         payment_method_id: formData.payment.stripePaymentMethodId,
         billing_email: formData.payment.billingEmail || formData.basicInfo?.email,
       });
@@ -185,10 +172,10 @@ export function useOnboarding(): UseOnboardingReturn {
       };
 
       const userId = localStorage.getItem('user_id') || 'current';
-      const profileResponse = await api.put(`/researchers/${userId}`, profileData);
+      const profileResponse = await apiClient.put(`/researchers/${userId}`, profileData);
 
       // Step 3: Trigger AI enrichment service
-      await api.post(`/researchers/${userId}/enrich`, {
+      await apiClient.post(`/researchers/${userId}/enrich`, {
         google_scholar_url: formData.academicProfile?.googleScholarUrl,
         orcid_id: formData.academicProfile?.orcidId,
       });
@@ -214,20 +201,7 @@ export function useOnboarding(): UseOnboardingReturn {
 
   const clearFormData = useCallback(() => {
     localStorage.removeItem(ONBOARDING_STORAGE_KEY);
-    setFormData({
-      basicInfo: {},
-      academicProfile: {},
-      researchExpertise: {
-        primaryDomains: [],
-        keywords: [],
-        methodologies: [],
-      },
-      reviewExperience: {
-        journalsReviewedFor: [],
-        languages: [],
-      },
-      payment: {},
-    });
+    setFormData({});
     setCurrentStep(1);
   }, []);
 

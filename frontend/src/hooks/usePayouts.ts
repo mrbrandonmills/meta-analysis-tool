@@ -5,7 +5,7 @@ import {
   PayoutDistribution
 } from '@/lib/payment-types';
 
-interface UsePayoutsReturn {
+export interface UsePayoutsReturn {
   earnings: EarningsSummary | null;
   currentPool: PayoutPool | null;
   distributions: PayoutDistribution[];

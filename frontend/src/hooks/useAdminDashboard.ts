@@ -5,7 +5,7 @@ import {
   PayoutHistoryItem
 } from '@/lib/payment-types';
 
-interface UseAdminDashboardReturn {
+export interface UseAdminDashboardReturn {
   dashboardData: AdminDashboardData | null;
   researchers: ResearcherListItem[];
   payoutHistory: PayoutHistoryItem[];
