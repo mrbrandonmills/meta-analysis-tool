@@ -59,7 +59,7 @@ def upgrade() -> None:
         sa.Column('sections', sa.JSON(), nullable=False),
         sa.Column('style_config', sa.JSON(), nullable=True),
         sa.Column('is_public', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('created_by', sa.Integer(), nullable=True),
+        sa.Column('created_by', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='SET NULL'),
