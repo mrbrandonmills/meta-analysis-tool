@@ -348,6 +348,7 @@ class RoleChecker:
 
 # Specific role dependencies for convenience
 require_admin = RoleChecker([UserRole.ADMIN])
+require_editor = RoleChecker([UserRole.ADMIN, UserRole.EDITOR])
 require_researcher = RoleChecker([UserRole.ADMIN, UserRole.RESEARCHER])
 require_reviewer = RoleChecker([UserRole.ADMIN, UserRole.RESEARCHER, UserRole.REVIEWER])
 require_any_role = RoleChecker([UserRole.ADMIN, UserRole.RESEARCHER, UserRole.REVIEWER, UserRole.VIEWER])
