@@ -1,8 +1,14 @@
 import React from 'react'
 import Head from 'next/head'
+import dynamic from 'next/dynamic'
 import Hero from '@/components/landing/Hero'
 import FeaturesShowcase from '@/components/landing/FeaturesShowcase'
-import { HighlightDemo } from '@/components/demo/HighlightDemo'
+
+// Dynamic import to fix Framer Motion SSR hydration with Next.js 15
+const HighlightDemo = dynamic(
+  () => import('@/components/demo/HighlightDemo').then(mod => mod.HighlightDemo),
+  { ssr: false }
+)
 
 const LandingPage: React.FC = () => {
   return (
