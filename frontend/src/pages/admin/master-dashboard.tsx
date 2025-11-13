@@ -42,8 +42,15 @@ const MasterAdminDashboardPage: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<TabType>('overview');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Check access
+  // Check authentication and access
   useEffect(() => {
+    // First check if user is logged in at all
+    if (!user) {
+      router.push('/login?redirect=/admin/master-dashboard');
+      return;
+    }
+
+    // Then check if user has admin access
     if (!canAccessAdmin(user)) {
       router.push('/dashboard-new');
     }

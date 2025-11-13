@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Layout from '@/components/layout/Layout'
 import StatsCard from '@/components/dashboard/StatsCard'
@@ -37,6 +37,13 @@ const toolColors = {
 const DashboardNewPage: React.FC = () => {
   const router = useRouter()
   const { projects, user } = useAppStore()
+
+  // Check if user is logged in
+  useEffect(() => {
+    if (!user) {
+      router.push('/login?redirect=/dashboard-new');
+    }
+  }, [user, router]);
 
   const stats = {
     total: projects.length,
