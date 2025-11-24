@@ -17,7 +17,8 @@ from app.models.tier_application import TierApplication
 from app.models.subscription import Subscription
 from app.schemas.tier_applications import *
 from app.services.credential_verification import auto_verify_application
-from app.services.email_service import send_email
+# Temporarily disabled - email service needs refactoring
+# from app.services.email_service import send_email
 from app.core.logging_config import logger
 import os
 import shutil
@@ -113,17 +114,18 @@ async def run_automatic_verification(application_id: UUID, db: AsyncSession):
 
             # Send success email
             user = await db.get(User, application.user_id)
-            await send_email(
-                to=user.email,
-                subject="Application Verification Complete - Under Review",
-                template="auto_verification_passed.html",
-                context={
-                    "user": user,
-                    "application": application,
-                    "h_index": application.h_index,
-                    "citations": application.total_citations
-                }
-            )
+            # TODO: Re-enable email notifications after refactoring EmailService
+            # await send_email(
+            #     to=user.email,
+            #     subject="Application Verification Complete - Under Review",
+            #     template="auto_verification_passed.html",
+            #     context={
+            #         "user": user,
+            #         "application": application,
+            #         "h_index": application.h_index,
+            #         "citations": application.total_citations
+            #     }
+            # )
         else:
             application.status = ApplicationStatusEnum.AUTO_VERIFICATION_FAILED
 
@@ -147,16 +149,17 @@ async def run_automatic_verification(application_id: UUID, db: AsyncSession):
 
             # Send denial email
             user = await db.get(User, application.user_id)
-            await send_email(
-                to=user.email,
-                subject="Application Decision - Verification Failed",
-                template="auto_verification_failed.html",
-                context={
-                    "user": user,
-                    "application": application,
-                    "failed_checks": failed_checks
-                }
-            )
+            # TODO: Re-enable email notifications after refactoring EmailService
+            # await send_email(
+            #     to=user.email,
+            #     subject="Application Decision - Verification Failed",
+            #     template="auto_verification_failed.html",
+            #     context={
+            #         "user": user,
+            #         "application": application,
+            #         "failed_checks": failed_checks
+            #     }
+            # )
 
         await db.commit()
         logger.info(f"Automatic verification complete for application {application_id}: {'PASSED' if verification_passed else 'FAILED'}")
@@ -287,13 +290,14 @@ async def apply_for_tier_2(
     background_tasks.add_task(run_automatic_verification, application.id, db)
 
     # Send confirmation email
-    background_tasks.add_task(
-        send_email,
-        to=current_user.email,
-        subject="Tier 2 Application Received - Verification in Progress",
-        template="tier_2_application_submitted.html",
-        context={"user": current_user, "application": application}
-    )
+    # TODO: Re-enable email notifications after refactoring EmailService
+    # background_tasks.add_task(
+    #     send_email,
+    #     to=current_user.email,
+    #     subject="Tier 2 Application Received - Verification in Progress",
+    #     template="tier_2_application_submitted.html",
+    #     context={"user": current_user, "application": application}
+    # )
 
     return Tier2ApplicationResponse(
         application_id=application.id,
@@ -433,13 +437,14 @@ async def apply_for_tier_3(
     background_tasks.add_task(run_enhanced_verification, application.id, db)
 
     # Send confirmation email
-    background_tasks.add_task(
-        send_email,
-        to=current_user.email,
-        subject="Tier 3 Application Received - Enhanced Verification in Progress",
-        template="tier_3_application_submitted.html",
-        context={"user": current_user, "application": application}
-    )
+    # TODO: Re-enable email notifications after refactoring EmailService
+    # background_tasks.add_task(
+    #     send_email,
+    #     to=current_user.email,
+    #     subject="Tier 3 Application Received - Enhanced Verification in Progress",
+    #     template="tier_3_application_submitted.html",
+    #     context={"user": current_user, "application": application}
+    # )
 
     return Tier3ApplicationResponse(
         application_id=application.id,
