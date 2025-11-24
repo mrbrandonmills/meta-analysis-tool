@@ -5,8 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction, subscriptions, payouts, review_approval, admin, tier_applications
-from app.api.v1.admin import tier_applications as admin_tier_applications
+from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction, subscriptions, payouts, review_approval, admin
 from app.core.config import get_settings
 from app.core.logging_config import configure_logging
 from app.core.middleware import (
@@ -199,8 +198,6 @@ app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["
 app.include_router(payouts.router, prefix="/api/v1/payouts", tags=["payouts"])
 app.include_router(review_approval.router, prefix="/api/v1/review-approval", tags=["review-approval"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
-app.include_router(tier_applications.router, prefix="/api/v1/tier-applications", tags=["tier-applications"])
-app.include_router(admin_tier_applications.router, prefix="/api/v1/admin/tier-applications", tags=["admin-tier-applications"])
 
 
 if __name__ == "__main__":
