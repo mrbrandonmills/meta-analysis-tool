@@ -116,7 +116,7 @@ class Tier2ApplicationCreate(BaseModel):
     degree_year: int = Field(..., ge=1950, le=2025, description="Year degree was awarded")
 
     # ORCID
-    orcid_id: str = Field(..., regex=r'^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$', example="0000-0001-2345-6789")
+    orcid_id: str = Field(..., pattern=r'^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$', example="0000-0001-2345-6789")
 
     # Google Scholar
     google_scholar_url: HttpUrl = Field(..., description="Public Google Scholar profile URL")
@@ -374,7 +374,7 @@ class AdminReviewDecision(BaseModel):
     """Admin decision on application"""
     action: str = Field(
         ...,
-        regex="^(APPROVE|DENY|REQUEST_MORE_INFO|PROBATIONARY_APPROVE)$",
+        pattern="^(APPROVE|DENY|REQUEST_MORE_INFO|PROBATIONARY_APPROVE)$",
         description="Decision action"
     )
     reasons: Optional[List[DenialReasonEnum]] = None

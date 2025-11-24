@@ -10,15 +10,10 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timedelta
 
-from app.db.session import get_db
-from app.core.security import get_current_user, require_admin
+from app.db.session import get_async_db
+from app.core.security import get_current_user_token, TokenData, require_admin
 from app.models.user import User, UserRole
-from app.models.tier_applications import (
-    TierApplication,
-    ApplicationTier,
-    ApplicationStatus,
-    SubscriptionTier
-)
+from app.models.tier_application import TierApplication
 from app.models.subscription import Subscription
 from app.schemas.tier_applications import *
 from app.services.credential_verification import auto_verify_application
@@ -73,7 +68,7 @@ async def run_automatic_verification(application_id: UUID, db: AsyncSession):
             return
 
         # Update status
-        application.status = ApplicationStatus.AUTO_VERIFICATION_IN_PROGRESS
+        application.status = ApplicationStatusEnum.AUTO_VERIFICATION_IN_PROGRESS
         await db.commit()
 
         # Run verification
@@ -113,7 +108,7 @@ async def run_automatic_verification(application_id: UUID, db: AsyncSession):
         application.auto_verification_completed_at = datetime.utcnow()
 
         if verification_passed:
-            application.status = ApplicationStatus.AUTO_VERIFICATION_PASSED
+            application.status = ApplicationStatusEnum.AUTO_VERIFICATION_PASSED
             application.manual_review_pending = True  # Flag for admin review queue
 
             # Send success email
@@ -130,7 +125,7 @@ async def run_automatic_verification(application_id: UUID, db: AsyncSession):
                 }
             )
         else:
-            application.status = ApplicationStatus.AUTO_VERIFICATION_FAILED
+            application.status = ApplicationStatusEnum.AUTO_VERIFICATION_FAILED
 
             # Determine which check failed
             failed_checks = []
@@ -145,7 +140,7 @@ async def run_automatic_verification(application_id: UUID, db: AsyncSession):
 
             # Auto-deny if automatic verification failed
             application.approved = False
-            application.status = ApplicationStatus.DENIED
+            application.status = ApplicationStatusEnum.DENIED
             application.denial_reasons = ["INSUFFICIENT_PUBLICATIONS", "DEGREE_NOT_VERIFIED"]
             application.denial_explanation = f"Automatic verification failed: {', '.join(failed_checks)}"
             application.decision_made_at = datetime.utcnow()
@@ -186,22 +181,22 @@ async def run_enhanced_verification(application_id: UUID, db: AsyncSession):
 def get_status_timeline(application: TierApplication) -> Dict:
     """Calculate current step and estimated completion date."""
     status_steps = {
-        ApplicationStatus.SUBMITTED: (1, 8),
-        ApplicationStatus.AUTO_VERIFICATION_IN_PROGRESS: (2, 8),
-        ApplicationStatus.AUTO_VERIFICATION_PASSED: (3, 8),
-        ApplicationStatus.MANUAL_REVIEW_PENDING: (4, 8),
-        ApplicationStatus.MANUAL_REVIEW_IN_PROGRESS: (5, 8),
-        ApplicationStatus.REFERENCES_CHECK_IN_PROGRESS: (6, 8),  # Tier 3 only
-        ApplicationStatus.ADVISORY_BOARD_REVIEW: (7, 8),  # Tier 3 only
-        ApplicationStatus.APPROVED: (8, 8),
-        ApplicationStatus.DENIED: (8, 8),
+        ApplicationStatusEnum.SUBMITTED: (1, 8),
+        ApplicationStatusEnum.AUTO_VERIFICATION_IN_PROGRESS: (2, 8),
+        ApplicationStatusEnum.AUTO_VERIFICATION_PASSED: (3, 8),
+        ApplicationStatusEnum.MANUAL_REVIEW_PENDING: (4, 8),
+        ApplicationStatusEnum.MANUAL_REVIEW_IN_PROGRESS: (5, 8),
+        ApplicationStatusEnum.REFERENCES_CHECK_IN_PROGRESS: (6, 8),  # Tier 3 only
+        ApplicationStatusEnum.ADVISORY_BOARD_REVIEW: (7, 8),  # Tier 3 only
+        ApplicationStatusEnum.APPROVED: (8, 8),
+        ApplicationStatusEnum.DENIED: (8, 8),
     }
 
     current_step, total_steps = status_steps.get(application.status, (1, 8))
 
     # Estimate decision date
     days_pending = (datetime.utcnow() - application.submitted_at).days
-    if application.tier_applied_for == ApplicationTier.TIER_2_REVIEWER:
+    if application.tier_applied_for == ApplicationTierEnum.TIER_2_REVIEWER:
         total_expected_days = 5
     else:
         total_expected_days = 10
@@ -224,8 +219,8 @@ def get_status_timeline(application: TierApplication) -> Dict:
 async def apply_for_tier_2(
     application_data: Tier2ApplicationCreate,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Submit Tier 2 (Peer Reviewer) application.
@@ -247,6 +242,16 @@ async def apply_for_tier_2(
     - Manual admin review: 2-5 business days
     - Total estimated time: 3-7 days
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     # Check eligibility
     if current_user.has_pending_tier_2_application:
         raise HTTPException(
@@ -254,17 +259,18 @@ async def apply_for_tier_2(
             detail="You already have a pending Tier 2 application"
         )
 
-    if current_user.current_tier == SubscriptionTier.TIER_2_REVIEWER:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You are already a Tier 2 reviewer"
-        )
+    # TODO: Re-enable when User.current_tier field is added
+    # if current_user.current_tier == "TIER_2_REVIEWER":
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="You are already a Tier 2 reviewer"
+    #     )
 
     # Create application
     application = TierApplication(
         user_id=current_user.id,
-        tier_applied_for=ApplicationTier.TIER_2_REVIEWER,
-        status=ApplicationStatus.SUBMITTED,
+        tier_applied_for=ApplicationTierEnum.TIER_2_REVIEWER,
+        status=ApplicationStatusEnum.SUBMITTED,
         **application_data.dict()
     )
     db.add(application)
@@ -303,8 +309,8 @@ async def apply_for_tier_2(
 async def apply_for_tier_3(
     application_data: Tier3ApplicationCreate,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Submit Tier 3 (Editor) application.
@@ -324,12 +330,23 @@ async def apply_for_tier_3(
     - Academic advisory board (if needed): 3-5 days
     - Total estimated time: 7-14 days
     """
-    # Check eligibility
-    if current_user.current_tier != SubscriptionTier.TIER_2_REVIEWER:
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Must be an approved Tier 2 reviewer to apply for Tier 3"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
         )
+
+    # Check eligibility
+    # TODO: Re-enable when User.current_tier field is added
+    # if current_user.current_tier != "TIER_2_REVIEWER":
+    #     raise HTTPException(
+    #         status_code=status.HTTP_403_FORBIDDEN,
+    #         detail="Must be an approved Tier 2 reviewer to apply for Tier 3"
+    #     )
 
     if current_user.has_pending_tier_3_application:
         raise HTTPException(
@@ -368,7 +385,7 @@ async def apply_for_tier_3(
     result = await db.execute(
         select(TierApplication)
         .where(TierApplication.user_id == current_user.id)
-        .where(TierApplication.tier_applied_for == ApplicationTier.TIER_2_REVIEWER)
+        .where(TierApplication.tier_applied_for == ApplicationTierEnum.TIER_2_REVIEWER)
         .where(TierApplication.approved == True)
     )
     tier_2_app = result.scalar_one_or_none()
@@ -382,8 +399,8 @@ async def apply_for_tier_3(
     # Create Tier 3 application (inherits Tier 2 data)
     application = TierApplication(
         user_id=current_user.id,
-        tier_applied_for=ApplicationTier.TIER_3_EDITOR,
-        status=ApplicationStatus.SUBMITTED,
+        tier_applied_for=ApplicationTierEnum.TIER_3_EDITOR,
+        status=ApplicationStatusEnum.SUBMITTED,
 
         # Inherit from Tier 2
         degree_type=tier_2_app.degree_type,
@@ -442,8 +459,8 @@ async def apply_for_tier_3(
 async def upload_cv(
     application_id: UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload CV/Resume for application.
@@ -453,6 +470,16 @@ async def upload_cv(
     - Maximum file size: 10 MB
     - Must include education, employment, publications
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     application = await db.get(TierApplication, application_id)
 
     if not application or application.user_id != current_user.id:
@@ -488,8 +515,8 @@ async def upload_cv(
 async def upload_degree_certificate(
     application_id: UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload degree certificate/diploma for application.
@@ -499,6 +526,16 @@ async def upload_degree_certificate(
     - Maximum file size: 5 MB
     - Must be legible scan or photo
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     application = await db.get(TierApplication, application_id)
 
     if not application or application.user_id != current_user.id:
@@ -541,8 +578,8 @@ async def upload_recommendation_letter(
     recommender_email: EmailStr,
     recommender_institution: str,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload letter of recommendation for Tier 3 application.
@@ -553,12 +590,22 @@ async def upload_recommendation_letter(
     - Signed and dated within last 6 months
     - 2 letters required
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     application = await db.get(TierApplication, application_id)
 
     if not application or application.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
-    if application.tier_applied_for != ApplicationTier.TIER_3_EDITOR:
+    if application.tier_applied_for != ApplicationTierEnum.TIER_3_EDITOR:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Recommendation letters only required for Tier 3 applications"
@@ -599,10 +646,20 @@ async def upload_recommendation_letter(
 
 @router.get("/my-applications", response_model=List[ApplicationDetailResponse])
 async def get_my_applications(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get all applications for current user."""
+    # Get current user from database
+    user_result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = user_result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     result = await db.execute(
         select(TierApplication)
         .where(TierApplication.user_id == current_user.id)
@@ -615,14 +672,24 @@ async def get_my_applications(
 @router.get("/{application_id}", response_model=ApplicationDetailResponse)
 async def get_application_details(
     application_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get detailed information about a specific application.
 
     Users can only view their own applications (unless admin).
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     application = await db.get(TierApplication, application_id)
 
     if not application:
@@ -638,12 +705,22 @@ async def get_application_details(
 @router.get("/status/{application_id}", response_model=ApplicationStatusResponse)
 async def check_application_status(
     application_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Check the current status of an application with estimated completion time.
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     application = await db.get(TierApplication, application_id)
 
     if not application or application.user_id != current_user.id:
@@ -660,10 +737,10 @@ async def check_application_status(
         days_in_review=(datetime.utcnow() - application.submitted_at).days,
         current_step=timeline["current_step"],
         total_steps=timeline["total_steps"],
-        can_appeal=(application.status == ApplicationStatus.DENIED and not application.appeal_submitted),
+        can_appeal=(application.status == ApplicationStatusEnum.DENIED and not application.appeal_submitted),
         auto_verification_completed=bool(application.auto_verification_completed_at),
         auto_verification_passed=(
-            application.status == ApplicationStatus.AUTO_VERIFICATION_PASSED
+            application.status == ApplicationStatusEnum.AUTO_VERIFICATION_PASSED
             if application.auto_verification_completed_at else None
         ),
         denial_reasons=application.denial_reasons,
@@ -680,8 +757,8 @@ async def submit_appeal(
     application_id: UUID,
     appeal_data: AppealSubmission,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    token: TokenData = Depends(get_current_user_token),
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Submit an appeal for a denied application.
@@ -695,12 +772,22 @@ async def submit_appeal(
     - Tier 2: Reviewed by senior admin (7 days)
     - Tier 3: Reviewed by Academic Advisory Board (10 days)
     """
+    # Get current user from database
+    result = await db.execute(select(User).where(User.id == UUID(token.user_id)))
+    current_user = result.scalar_one_or_none()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     application = await db.get(TierApplication, application_id)
 
     if not application or application.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
-    if application.status != ApplicationStatus.DENIED:
+    if application.status != ApplicationStatusEnum.DENIED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Can only appeal denied applications"
@@ -717,7 +804,7 @@ async def submit_appeal(
     application.appeal_submitted_at = datetime.utcnow()
     application.appeal_reason = appeal_data.reason
     application.appeal_additional_evidence = appeal_data.additional_evidence
-    application.status = ApplicationStatus.APPEALED
+    application.status = ApplicationStatusEnum.APPEALED
 
     await db.commit()
 
@@ -741,7 +828,7 @@ async def submit_appeal(
         context={"user": current_user, "application": application}
     )
 
-    expected_days = 7 if application.tier_applied_for == ApplicationTier.TIER_2_REVIEWER else 10
+    expected_days = 7 if application.tier_applied_for == ApplicationTierEnum.TIER_2_REVIEWER else 10
 
     return AppealResponse(
         message="Appeal submitted successfully. You will receive a response within the estimated timeframe.",

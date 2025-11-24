@@ -8,7 +8,9 @@ import asyncio
 from typing import Dict, Optional, List, Tuple
 from datetime import datetime
 from scholarly import scholarly
-from app.core.config import settings
+from app.core.config import get_settings
+
+settings = get_settings()
 from app.core.logging_config import logger
 import re
 
