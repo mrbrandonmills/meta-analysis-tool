@@ -154,19 +154,56 @@ async def execute_meta_analysis(
                 detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
             )
 
-        # Restore coordinator from database
+        # Restore coordinator from database, or create new one if first execution
         coordinator_config = AgentConfig(
             name="Coordinator",
             role="coordinator",  # type: ignore
             expert_profile=meta_analysis.expert_name,
         )
         coordinator = await service.restore_coordinator(analysis_uuid, coordinator_config)
+
         if not coordinator:
-            logger.error(f"Coordinator state not found for analysis_id: {analysis_id}")
-            raise HTTPException(
-                status_code=404,
-                detail=f"Coordinator state not found. Analysis ID: {analysis_id}"
+            # First execution - create and initialize coordinator
+            logger.info(f"No existing coordinator for {analysis_id}, initializing new one")
+            coordinator = CoordinatorAgent(coordinator_config)
+
+            # Create initial workflow plan
+            workflow_plan = {
+                "research_question": meta_analysis.research_question,
+                "topic": meta_analysis.topic,
+                "steps": [
+                    "Search databases for relevant studies",
+                    "Screen titles and abstracts",
+                    "Assess study credibility and quality",
+                    "Extract full-text (if available)",
+                    "Perform quality assessment",
+                    "Synthesize results"
+                ],
+                "databases": meta_analysis.databases,
+                "inclusion_criteria": meta_analysis.inclusion_criteria,
+                "exclusion_criteria": meta_analysis.exclusion_criteria,
+            }
+
+            # Add initial decision to coordinator
+            initial_decision = {
+                "step": "workflow_planning",
+                "action": "execute_search",
+                "reasoning": f"Starting meta-analysis workflow for: {meta_analysis.research_question}",
+                "next_agent": "SearchAgent",
+                "parameters": {
+                    "research_question": meta_analysis.research_question,
+                    "databases": meta_analysis.databases,
+                }
+            }
+            coordinator.decisions = [initial_decision]
+
+            # Save initial coordinator state to database
+            await service.save_coordinator_state(
+                analysis_id=analysis_uuid,
+                coordinator=coordinator,
+                workflow_plan=workflow_plan
             )
+            logger.info(f"Created and saved initial coordinator state for {analysis_id}")
 
         # Update status to in_progress
         await service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.IN_PROGRESS)
@@ -175,10 +212,6 @@ async def execute_meta_analysis(
         search_config = AgentConfig(name="SearchAgent", role="search")  # type: ignore
         search_agent = SearchAgent(search_config)
         orchestrator.register_agent(search_agent)
-
-        # Get research question from coordinator's last decision
-        if not coordinator.decisions:
-            raise HTTPException(status_code=400, detail="No workflow found")
 
         # Execute search
         search_input = {
@@ -290,10 +323,16 @@ async def execute_meta_analysis(
             ],
         }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"Error executing meta-analysis: {e}")
+        logger.error(f"Error executing meta-analysis {analysis_id}: {e}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to execute meta-analysis workflow: {str(e)}"
+        )
 
 
 @router.get("/meta-analysis/status/{analysis_id}")
