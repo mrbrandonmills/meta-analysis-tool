@@ -235,7 +235,7 @@ class MetaAnalysisService:
             logger.info(f"Updated meta-analysis {analysis_id} status to {status}")
         return meta_analysis
 
-    def log_agent_execution(
+    async def log_agent_execution(
         self,
         analysis_id: UUID,
         agent_name: str,
@@ -265,13 +265,17 @@ class MetaAnalysisService:
         Returns:
             Created AgentExecution instance
         """
+        # Serialize input/output data to ensure JSON compatibility
+        serialized_input = json_serializable(input_data)
+        serialized_output = json_serializable(output_data)
+
         execution = AgentExecution(
             analysis_id=analysis_id,
             agent_name=agent_name,
             agent_role=agent_role,
             agent_id=agent_id,
-            input_data=input_data,
-            output_data=output_data,
+            input_data=serialized_input,
+            output_data=serialized_output,
             status=status,
             error_message=error_message,
             execution_time_ms=str(execution_time_ms) if execution_time_ms else None,
@@ -279,7 +283,7 @@ class MetaAnalysisService:
         )
 
         self.db.add(execution)
-        self.db.flush()
+        await self.db.flush()
         logger.debug(f"Logged {agent_name} execution for analysis {analysis_id}")
 
         return execution

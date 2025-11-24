@@ -133,7 +133,7 @@ async def create_meta_analysis(
         )
 
         # Log coordinator execution
-        service.log_agent_execution(
+        await service.log_agent_execution(
             analysis_id=meta_analysis.id,
             agent_name=coordinator.config.name,
             agent_role="coordinator",
@@ -225,7 +225,7 @@ async def execute_meta_analysis(
         search_results = await search_agent.process(search_input)
 
         # Log search agent execution
-        service.log_agent_execution(
+        await service.log_agent_execution(
             analysis_id=analysis_uuid,
             agent_name=search_agent.config.name,
             agent_role="search",
@@ -259,7 +259,7 @@ async def execute_meta_analysis(
         screening_results = await screening_agent.process(screening_input)
 
         # Log screening agent execution
-        service.log_agent_execution(
+        await service.log_agent_execution(
             analysis_id=analysis_uuid,
             agent_name=screening_agent.config.name,
             agent_role="screening",
@@ -282,7 +282,7 @@ async def execute_meta_analysis(
         credibility_results = await credibility_agent.process(credibility_input)
 
         # Log credibility agent execution
-        service.log_agent_execution(
+        await service.log_agent_execution(
             analysis_id=analysis_uuid,
             agent_name=credibility_agent.config.name,
             agent_role="quality_assessment",
