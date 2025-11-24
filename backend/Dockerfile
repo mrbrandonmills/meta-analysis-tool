@@ -56,15 +56,11 @@ COPY backend/app ./app
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
 
-# Copy startup script
-COPY backend/start.sh ./start.sh
-
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app && \
     mkdir -p /app/logs /app/data /app/temp && \
-    chown -R appuser:appuser /app/logs /app/data /app/temp && \
-    chmod +x /app/start.sh
+    chown -R appuser:appuser /app/logs /app/data /app/temp
 
 # Switch to non-root user
 USER appuser
