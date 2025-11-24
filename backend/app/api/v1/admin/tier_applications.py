@@ -39,7 +39,7 @@ async def get_pending_applications(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get all pending applications for admin review.
@@ -104,7 +104,7 @@ async def get_pending_applications(
 @router.get("/statistics")
 async def get_application_statistics(
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get statistics on tier applications for admin dashboard.
@@ -188,7 +188,7 @@ async def get_application_statistics(
 async def get_application_details(
     application_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get complete details of a specific application for admin review.
@@ -227,7 +227,7 @@ async def get_application_details(
 async def get_verification_report(
     application_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get detailed verification report including all credential checks.
@@ -264,7 +264,7 @@ async def review_application(
     decision: AdminReviewDecision,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Admin review decision on an application.
@@ -427,7 +427,7 @@ async def assign_to_advisory_board(
     application_id: UUID,
     notes: Optional[str] = None,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Escalate application to advisory board for review.
@@ -459,7 +459,7 @@ async def contact_professional_references(
     application_id: UUID,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Initiate contact with professional references for Tier 3 applications.
@@ -514,7 +514,7 @@ async def re_run_verification(
     application_id: UUID,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Re-run automatic verification (useful if initial verification had errors or needs refresh).
@@ -603,7 +603,7 @@ async def get_pending_appeals(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get all pending appeals for admin review.
@@ -644,7 +644,7 @@ async def review_appeal(
     explanation: str,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Make a decision on an appeal.

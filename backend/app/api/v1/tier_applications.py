@@ -10,7 +10,7 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timedelta
 
-from app.db.session import get_db
+from app.db.session import get_async_db
 from app.core.security import get_current_user, require_admin
 from app.models.user import User, UserRole
 from app.models.tier_applications import (
@@ -225,7 +225,7 @@ async def apply_for_tier_2(
     application_data: Tier2ApplicationCreate,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Submit Tier 2 (Peer Reviewer) application.
@@ -304,7 +304,7 @@ async def apply_for_tier_3(
     application_data: Tier3ApplicationCreate,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Submit Tier 3 (Editor) application.
@@ -443,7 +443,7 @@ async def upload_cv(
     application_id: UUID,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload CV/Resume for application.
@@ -489,7 +489,7 @@ async def upload_degree_certificate(
     application_id: UUID,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload degree certificate/diploma for application.
@@ -542,7 +542,7 @@ async def upload_recommendation_letter(
     recommender_institution: str,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload letter of recommendation for Tier 3 application.
@@ -600,7 +600,7 @@ async def upload_recommendation_letter(
 @router.get("/my-applications", response_model=List[ApplicationDetailResponse])
 async def get_my_applications(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get all applications for current user."""
     result = await db.execute(
@@ -616,7 +616,7 @@ async def get_my_applications(
 async def get_application_details(
     application_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get detailed information about a specific application.
@@ -639,7 +639,7 @@ async def get_application_details(
 async def check_application_status(
     application_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Check the current status of an application with estimated completion time.
@@ -681,7 +681,7 @@ async def submit_appeal(
     appeal_data: AppealSubmission,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Submit an appeal for a denied application.
