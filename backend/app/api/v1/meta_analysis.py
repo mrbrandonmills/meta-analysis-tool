@@ -80,9 +80,9 @@ async def create_meta_analysis(
         service = MetaAnalysisService(db)
 
         # TODO: Get user_id from authentication
-        # For now, create a dummy user if none exists
+        # For now, use first user if no authentication (development only)
         from app.models.user import User
-        result = await db.execute(select(User))
+        result = await db.execute(select(User).limit(1))
         user = result.scalar_one_or_none()
         if not user:
             # Create a default user for development
@@ -93,6 +93,7 @@ async def create_meta_analysis(
             )
             db.add(user)
             await db.flush()
+            logger.info("Created default user for development")
 
         # Create meta-analysis database record
         meta_analysis = service.create_meta_analysis(
