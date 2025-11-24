@@ -51,6 +51,15 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = "whsec_dummy_secret_for_migrations"
     stripe_price_id: Optional[str] = None  # Monthly $100 price ID
 
+    # Email Configuration
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_email: str = "noreply@metaanalysistool.com"
+    smtp_from_name: str = "Meta-Analysis Tool"
+    smtp_use_tls: bool = True
+
     # Feature Flags
     enable_voice: bool = False
     enable_learning: bool = True

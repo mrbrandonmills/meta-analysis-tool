@@ -21,8 +21,23 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    full_name = Column(String(255), nullable=True)
+    full_name = Column(String(255), nullable=True)  # Legacy field
+    first_name = Column(String(255), nullable=True)
+    last_name = Column(String(255), nullable=True)
     institution = Column(String(255), nullable=True)
+
+    # Tier system (separate from role)
+    tier = Column(
+        SQLEnum(
+            "tier_1_researcher",
+            "tier_2_reviewer",
+            "tier_3_editor",
+            name="user_tier_enum"
+        ),
+        nullable=False,
+        default="tier_1_researcher",
+        index=True
+    )
 
     # Role-based access control
     role = Column(

@@ -31,6 +31,8 @@ from app.models.review_completion import ReviewCompletion, PayoutStatus
 from app.models.payout_distribution import PayoutDistribution, TransferStatus
 # Admin models
 from app.models.admin_action import AdminAction, AdminActionType
+# Tier application models
+from app.models.tier_application import TierApplication, QualificationVerification
 
 __all__ = [
     # Base models and mixins
@@ -108,4 +110,7 @@ __all__ = [
     # Admin models
     "AdminAction",
     "AdminActionType",
+    # Tier application models
+    "TierApplication",
+    "QualificationVerification",
 ]
