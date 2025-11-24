@@ -5,8 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction, subscriptions, payouts, review_approval, admin, tier_applications
-from app.api.v1.admin import tier_applications as admin_tier_applications
+from app.api.v1 import meta_analysis, agents, studies, auth, health, reports, manuscripts, peer_reviews, researchers, reviewer_matcher, progress, researcher_enrichment, research_direction, subscriptions, payouts, review_approval, admin, tier_applications, admin_tier_applications
 from app.core.config import get_settings
 from app.core.logging_config import configure_logging
 from app.core.middleware import (

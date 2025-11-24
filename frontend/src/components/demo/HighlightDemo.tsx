@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useAnimation } from 'framer-motion'
+import { motion, AnimatePresence, useAnimation, useInView } from 'framer-motion'
 import {
   Play,
   Pause,
@@ -232,11 +232,19 @@ export const HighlightDemo: React.FC<HighlightDemoProps> = ({
   autoPlay = false,
   className = ''
 }) => {
-  const [isPlaying, setIsPlaying] = useState(autoPlay)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [currentStageIndex, setCurrentStageIndex] = useState(0)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [hasStarted, setHasStarted] = useState(false)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout>()
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Viewport detection - trigger when 20% of component is visible
+  const isInView = useInView(containerRef, {
+    once: false,
+    amount: 0.2
+  })
 
   const currentStage = DEMO_STAGES[currentStageIndex]
   const progress = ((currentStageIndex + 1) / DEMO_STAGES.length) * 100
@@ -245,6 +253,42 @@ export const HighlightDemo: React.FC<HighlightDemoProps> = ({
   // PLAYBACK CONTROL
   // ============================================================================
 
+  // Check for reduced-motion preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReducedMotion(mediaQuery.matches)
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches)
+      // Pause playback if user enables reduced motion
+      if (e.matches && isPlaying) {
+        setIsPlaying(false)
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [isPlaying])
+
+  // Auto-start playback when component enters viewport (if autoPlay is true)
+  useEffect(() => {
+    if (
+      autoPlay &&
+      isInView &&
+      !hasStarted &&
+      !prefersReducedMotion &&
+      !isPlaying
+    ) {
+      setIsPlaying(true)
+      setHasStarted(true)
+    }
+    // Pause when out of view (if user hasn't manually started)
+    if (!isInView && isPlaying && !hasStarted) {
+      setIsPlaying(false)
+    }
+  }, [isInView, autoPlay, hasStarted, prefersReducedMotion, isPlaying])
+
+  // Main playback loop
   useEffect(() => {
     if (isPlaying && currentStageIndex < DEMO_STAGES.length) {
       const duration = currentStage.duration / playbackSpeed
@@ -328,7 +372,10 @@ export const HighlightDemo: React.FC<HighlightDemoProps> = ({
   // ============================================================================
 
   return (
-    <div className={`relative w-full h-screen bg-black overflow-hidden ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative w-full h-screen bg-black overflow-hidden ${className}`}
+    >
       {/* Animated background gradient */}
       <motion.div
         className={`absolute inset-0 bg-gradient-to-br ${currentStage.color} opacity-80`}
