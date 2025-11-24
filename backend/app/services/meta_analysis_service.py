@@ -48,7 +48,7 @@ class MetaAnalysisService:
         """Initialize service with database session."""
         self.db = db
 
-    def create_meta_analysis(
+    async def create_meta_analysis(
         self,
         user_id: UUID,
         research_question: str,
@@ -87,7 +87,7 @@ class MetaAnalysisService:
         )
 
         self.db.add(meta_analysis)
-        self.db.flush()  # Get ID without committing
+        await self.db.flush()  # Get ID without committing
         logger.info(f"Created meta-analysis {meta_analysis.id} for user {user_id}")
 
         return meta_analysis

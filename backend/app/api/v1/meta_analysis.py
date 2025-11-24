@@ -96,7 +96,7 @@ async def create_meta_analysis(
             logger.info("Created default user for development")
 
         # Create meta-analysis database record
-        meta_analysis = service.create_meta_analysis(
+        meta_analysis = await service.create_meta_analysis(
             user_id=user.id,
             research_question=request.research_question,
             topic=request.topic,
