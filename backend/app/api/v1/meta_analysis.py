@@ -68,10 +68,9 @@ async def create_meta_analysis(
 
     This endpoint:
     1. Creates database record for meta-analysis
-    2. Initializes the coordinator agent
-    3. Creates a workflow plan
-    4. Persists coordinator state to database
-    5. Returns the plan for approval
+    2. Returns the analysis ID
+
+    Note: Workflow planning happens in the /execute endpoint.
     """
     try:
         logger.info(f"Creating meta-analysis: {request.topic}")
@@ -107,51 +106,16 @@ async def create_meta_analysis(
             expert_name=request.expert_name,
         )
 
-        # Initialize coordinator agent
-        coordinator_config = AgentConfig(
-            name="Coordinator",
-            role="coordinator",  # type: ignore
-            expert_profile=request.expert_name,
-        )
-        coordinator = CoordinatorAgent(coordinator_config)
-        orchestrator.register_agent(coordinator)
-
-        # Process the request to create workflow
-        result = await coordinator.process(request.model_dump())
-
-        # Save coordinator state to database
-        await service.save_coordinator_state(
-            analysis_id=meta_analysis.id,
-            coordinator=coordinator,
-            workflow_plan=result,
-        )
-
-        # Update status to workflow_created
-        await service.update_meta_analysis_status(
-            analysis_id=meta_analysis.id,
-            status=MetaAnalysisStatus.WORKFLOW_CREATED,
-        )
-
-        # Log coordinator execution
-        await service.log_agent_execution(
-            analysis_id=meta_analysis.id,
-            agent_name=coordinator.config.name,
-            agent_role="coordinator",
-            agent_id=coordinator.id,
-            input_data=request.model_dump(),
-            output_data=result,
-            status="success",
-        )
-
+        # Commit the meta-analysis record
         await db.commit()
 
-        logger.info(f"Created and persisted meta-analysis {meta_analysis.id}")
+        logger.info(f"Created meta-analysis {meta_analysis.id}")
 
         return MetaAnalysisResponse(
             id=str(meta_analysis.id),
-            status="workflow_created",
-            message="Meta-analysis workflow created successfully",
-            workflow=result,
+            status="created",
+            message="Meta-analysis created successfully. Use /execute endpoint to run the workflow.",
+            workflow=None,
         )
 
     except Exception as e:
