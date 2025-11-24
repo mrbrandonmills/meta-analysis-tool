@@ -49,7 +49,7 @@ class MetaAnalysisResponse(BaseModel):
     id: str
     status: str
     message: str
-    workflow: dict
+    workflow: Optional[dict] = None
 
 
 class QuestionRequest(BaseModel):
