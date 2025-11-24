@@ -1,6 +1,8 @@
 """Meta-analysis persistence service for database operations."""
 
 import json
+from datetime import datetime
+from enum import Enum
 from typing import Optional, Dict, Any
 from uuid import UUID
 
@@ -10,6 +12,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.specialized import CoordinatorAgent
 from app.models.meta_analysis import MetaAnalysis, CoordinatorState, AgentExecution, MetaAnalysisStatus
+
+
+def json_serializable(obj: Any) -> Any:
+    """Convert objects to JSON-serializable types.
+
+    Handles:
+    - UUID -> str
+    - Enum -> value
+    - datetime -> ISO format str
+    - dict -> recursively convert values
+    - list -> recursively convert items
+    - other -> attempt str() conversion
+    """
+    if isinstance(obj, UUID):
+        return str(obj)
+    elif isinstance(obj, Enum):
+        return obj.value
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [json_serializable(item) for item in obj]
+    elif hasattr(obj, "__dict__"):
+        return json_serializable(obj.__dict__)
+    else:
+        return obj
 
 
 class MetaAnalysisService:
@@ -90,12 +119,15 @@ class MetaAnalysisService:
         agent_state = self._serialize_coordinator_state(coordinator)
         decisions = [self._serialize_decision(d) for d in coordinator.decisions]
 
+        # Serialize workflow_plan to ensure all nested objects are JSON-compatible
+        serialized_workflow_plan = json_serializable(workflow_plan) if workflow_plan else None
+
         if existing_state:
             # Update existing state
             existing_state.agent_state = agent_state
             existing_state.decisions = decisions
-            if workflow_plan:
-                existing_state.workflow_plan = workflow_plan
+            if serialized_workflow_plan:
+                existing_state.workflow_plan = serialized_workflow_plan
             coordinator_state = existing_state
             logger.info(f"Updated coordinator state for analysis {analysis_id}")
         else:
@@ -105,7 +137,7 @@ class MetaAnalysisService:
                 coordinator_id=coordinator.id,
                 agent_state=agent_state,
                 decisions=decisions,
-                workflow_plan=workflow_plan,
+                workflow_plan=serialized_workflow_plan,
             )
             self.db.add(coordinator_state)
             logger.info(f"Created coordinator state for analysis {analysis_id}")
@@ -280,9 +312,4 @@ class MetaAnalysisService:
         Returns:
             Serialized decision dictionary
         """
-        if isinstance(decision, dict):
-            return decision
-        elif hasattr(decision, "__dict__"):
-            return decision.__dict__
-        else:
-            return {"data": str(decision)}
+        return json_serializable(decision)
