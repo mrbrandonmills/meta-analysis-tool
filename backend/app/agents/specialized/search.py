@@ -44,18 +44,26 @@ Your responsibilities:
 6. Document search strategies for reproducibility
 
 You are familiar with and have access to:
-- PubMed/MEDLINE (medical & life sciences)
-- arXiv (preprints: physics, math, CS, q-bio)
-- Europe PMC (European research + life sciences)
-- CORE (open access papers from global repositories)
+- PubMed/MEDLINE (medical & life sciences) ✅
+- arXiv (preprints: physics, math, CS, q-bio) ✅
+- Europe PMC (European biomedical research) ✅
+- CORE (open access papers globally) ✅
+- DOAJ (Directory of Open Access Journals) ✅
+- Semantic Scholar (AI-powered with citations) ✅
+- Crossref (DOI metadata, all disciplines) ✅
+- BASE (Bielefeld Academic Search Engine, multidisciplinary) ✅
 
-Planned for future integration:
-- PsycINFO
-- Web of Science
-- Scopus
-- Google Scholar
-- Cochrane Library
-- CINAHL
+Planned for future integration (require API keys/subscriptions):
+- Google Scholar (comprehensive, all disciplines)
+- Scopus (citation tracking, all disciplines)
+- Web of Science (citation tracking, all disciplines)
+- IEEE Xplore (computer science & engineering)
+- JSTOR (humanities & social sciences)
+- ScienceDirect (Elsevier journals)
+- PsycINFO (psychology)
+- ERIC (education)
+- Cochrane Library (healthcare evidence)
+- CINAHL (nursing & allied health)
 
 Always document your search strategy completely, including:
 - Databases searched
@@ -141,6 +149,38 @@ Provide:
                 all_results.extend(results)
                 search_log.append({
                     "database": "CORE",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "doaj":
+                results = await self._search_doaj(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "DOAJ",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "semantic_scholar":
+                results = await self._search_semantic_scholar(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "Semantic Scholar",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "crossref":
+                results = await self._search_crossref(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "Crossref",
+                    "results_count": len(results),
+                    "query": " AND ".join(search_terms),
+                })
+            elif database.lower() == "base":
+                results = await self._search_base(search_terms, input_data)
+                all_results.extend(results)
+                search_log.append({
+                    "database": "BASE",
                     "results_count": len(results),
                     "query": " AND ".join(search_terms),
                 })
@@ -524,4 +564,289 @@ Provide:
 
         except Exception as e:
             logger.error(f"Error searching CORE: {e}")
+            return []
+
+    async def _search_doaj(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search Directory of Open Access Journals (DOAJ).
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        query = " AND ".join(search_terms)
+        base_url = "https://doaj.org/api/search/articles"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    base_url,
+                    params={
+                        "q": query,
+                        "pageSize": 50,
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"DOAJ search failed: {response.status_code}")
+                    return []
+
+                data = response.json()
+                results_list = data.get("results", [])
+
+                logger.info(f"Found {len(results_list)} results in DOAJ")
+
+                results = []
+                for study in results_list:
+                    bibjson = study.get("bibjson", {})
+
+                    # Extract authors
+                    authors = []
+                    for author in bibjson.get("author", []):
+                        name = author.get("name", "")
+                        if name:
+                            authors.append(name)
+
+                    # Extract identifiers
+                    doi = ""
+                    for identifier in bibjson.get("identifier", []):
+                        if identifier.get("type") == "doi":
+                            doi = identifier.get("id", "")
+                            break
+
+                    results.append({
+                        "id": f"DOAJ:{study.get('id', '')}",
+                        "title": bibjson.get("title", ""),
+                        "authors": authors,
+                        "journal": bibjson.get("journal", {}).get("title", ""),
+                        "year": str(bibjson.get("year", "")),
+                        "abstract": bibjson.get("abstract", ""),
+                        "doi": doi,
+                        "database": "DOAJ",
+                        "url": study.get("link", [{}])[0].get("url", "") if study.get("link") else "",
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching DOAJ: {e}")
+            return []
+
+    async def _search_semantic_scholar(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search Semantic Scholar - AI-powered research tool with citation data.
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        query = " ".join(search_terms)
+        base_url = "https://api.semanticscholar.org/graph/v1/paper/search"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    base_url,
+                    params={
+                        "query": query,
+                        "limit": 50,
+                        "fields": "paperId,title,authors,year,abstract,venue,citationCount,openAccessPdf,externalIds",
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Semantic Scholar search failed: {response.status_code}")
+                    return []
+
+                data = response.json()
+                papers = data.get("data", [])
+
+                logger.info(f"Found {len(papers)} results in Semantic Scholar")
+
+                results = []
+                for paper in papers:
+                    # Extract authors
+                    authors = [a.get("name", "") for a in paper.get("authors", [])]
+
+                    # Get DOI or other IDs
+                    external_ids = paper.get("externalIds", {})
+                    doi = external_ids.get("DOI", "")
+                    pmid = external_ids.get("PubMed", "")
+
+                    # Get PDF URL if available
+                    pdf_url = ""
+                    if paper.get("openAccessPdf"):
+                        pdf_url = paper.get("openAccessPdf", {}).get("url", "")
+
+                    results.append({
+                        "id": f"S2:{paper.get('paperId', '')}",
+                        "pmid": pmid if pmid else None,
+                        "title": paper.get("title", ""),
+                        "authors": authors,
+                        "journal": paper.get("venue", ""),
+                        "year": str(paper.get("year", "")),
+                        "abstract": paper.get("abstract", ""),
+                        "doi": doi,
+                        "database": "Semantic Scholar",
+                        "citation_count": paper.get("citationCount", 0),
+                        "pdf_url": pdf_url,
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching Semantic Scholar: {e}")
+            return []
+
+    async def _search_crossref(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search Crossref - DOI registration agency with extensive metadata.
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        query = " ".join(search_terms)
+        base_url = "https://api.crossref.org/works"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    base_url,
+                    params={
+                        "query": query,
+                        "rows": 50,
+                        "mailto": settings.pubmed_email or "demo@example.com",  # Polite API usage
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Crossref search failed: {response.status_code}")
+                    return []
+
+                data = response.json()
+                items = data.get("message", {}).get("items", [])
+
+                logger.info(f"Found {len(items)} results in Crossref")
+
+                results = []
+                for item in items:
+                    # Extract authors
+                    authors = []
+                    for author in item.get("author", []):
+                        given = author.get("given", "")
+                        family = author.get("family", "")
+                        if given and family:
+                            authors.append(f"{given} {family}")
+                        elif family:
+                            authors.append(family)
+
+                    # Extract year
+                    year = ""
+                    if "published" in item:
+                        date_parts = item["published"].get("date-parts", [[]])[0]
+                        if date_parts:
+                            year = str(date_parts[0])
+                    elif "created" in item:
+                        date_parts = item["created"].get("date-parts", [[]])[0]
+                        if date_parts:
+                            year = str(date_parts[0])
+
+                    # Get abstract
+                    abstract = item.get("abstract", "")
+
+                    results.append({
+                        "id": f"DOI:{item.get('DOI', '')}",
+                        "title": item.get("title", [""])[0] if item.get("title") else "",
+                        "authors": authors,
+                        "journal": item.get("container-title", [""])[0] if item.get("container-title") else "",
+                        "year": year,
+                        "abstract": abstract,
+                        "doi": item.get("DOI", ""),
+                        "database": "Crossref",
+                        "type": item.get("type", ""),
+                        "publisher": item.get("publisher", ""),
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching Crossref: {e}")
+            return []
+
+    async def _search_base(
+        self, search_terms: List[str], params: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search BASE (Bielefeld Academic Search Engine) - large multidisciplinary index.
+
+        Args:
+            search_terms: List of search terms
+            params: Additional search parameters
+
+        Returns:
+            List of study results
+        """
+        query = " AND ".join([f'"{term}"' for term in search_terms])
+        base_url = "https://api.base-search.net/cgi-bin/BaseHttpSearchInterface.fcgi"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    base_url,
+                    params={
+                        "func": "PerformSearch",
+                        "query": query,
+                        "hits": 50,
+                        "format": "json",
+                    },
+                    timeout=30.0,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"BASE search failed: {response.status_code}")
+                    return []
+
+                data = response.json()
+                docs = data.get("response", {}).get("docs", [])
+
+                logger.info(f"Found {len(docs)} results in BASE")
+
+                results = []
+                for doc in docs:
+                    # Extract authors
+                    authors = doc.get("dcauthor", [])
+                    if isinstance(authors, str):
+                        authors = [authors]
+
+                    results.append({
+                        "id": f"BASE:{doc.get('dcidentifier', [''])[0] if isinstance(doc.get('dcidentifier'), list) else doc.get('dcidentifier', '')}",
+                        "title": doc.get("dctitle", [""])[0] if isinstance(doc.get("dctitle"), list) else doc.get("dctitle", ""),
+                        "authors": authors,
+                        "journal": doc.get("dccollection", [""])[0] if isinstance(doc.get("dccollection"), list) else doc.get("dccollection", ""),
+                        "year": str(doc.get("dcyear", "")),
+                        "abstract": doc.get("dcsubject", [""])[0] if isinstance(doc.get("dcsubject"), list) else doc.get("dcsubject", ""),  # BASE doesn't always have abstracts
+                        "doi": doc.get("dclink", [""])[0] if isinstance(doc.get("dclink"), list) and "doi.org" in str(doc.get("dclink", [""])[0]) else "",
+                        "database": "BASE",
+                        "type": doc.get("dctypenorm", [""])[0] if isinstance(doc.get("dctypenorm"), list) else doc.get("dctypenorm", ""),
+                    })
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error searching BASE: {e}")
             return []
