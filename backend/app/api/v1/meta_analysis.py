@@ -422,7 +422,7 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
         result = await db.execute(
             select(AgentExecution)
             .where(AgentExecution.analysis_id == analysis_uuid)
-            .order_by(AgentExecution.created_at)
+            .order_by(AgentExecution.executed_at)
         )
         agent_executions = result.scalars().all()
 
@@ -433,7 +433,7 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
                 "agent_name": execution.agent_name,
                 "agent_role": execution.agent_role,
                 "status": execution.status,
-                "completed_at": execution.created_at.isoformat(),
+                "completed_at": execution.executed_at.isoformat(),
                 "execution_time_ms": execution.execution_time_ms,
             })
 
