@@ -230,19 +230,58 @@ Provide:
                     return []
 
                 summary_data = summary_response.json()
+
+                # Fetch full abstracts using efetch
+                logger.info(f"Fetching abstracts for {len(ids[:20])} studies...")
+                abstract_response = await client.get(
+                    f"{base_url}efetch.fcgi",
+                    params={
+                        "db": "pubmed",
+                        "id": ",".join(ids[:20]),
+                        "retmode": "xml",
+                        "rettype": "abstract",
+                    },
+                    timeout=30.0,
+                )
+
+                # Parse abstracts from XML
+                abstracts = {}
+                if abstract_response.status_code == 200:
+                    import xml.etree.ElementTree as ET
+                    try:
+                        root = ET.fromstring(abstract_response.content)
+                        for article in root.findall(".//PubmedArticle"):
+                            pmid_elem = article.find(".//PMID")
+                            abstract_elem = article.find(".//AbstractText")
+
+                            if pmid_elem is not None and abstract_elem is not None:
+                                pmid = pmid_elem.text
+                                abstract_text = abstract_elem.text or ""
+                                abstracts[pmid] = abstract_text
+
+                        logger.info(f"Successfully fetched {len(abstracts)} abstracts")
+                    except Exception as e:
+                        logger.warning(f"Error parsing abstracts XML: {e}")
+                else:
+                    logger.warning(f"Failed to fetch abstracts: {abstract_response.status_code}")
+
                 results = []
 
                 for pmid, study in summary_data.get("result", {}).items():
                     if pmid == "uids":
                         continue
 
+                    # Get abstract from fetched data
+                    abstract = abstracts.get(pmid, "")
+
                     results.append({
                         "id": f"PMID:{pmid}",
+                        "pmid": pmid,  # Add explicit PMID field
                         "title": study.get("title", ""),
                         "authors": study.get("authors", []),
                         "journal": study.get("fulljournalname", ""),
                         "year": study.get("pubdate", "").split()[0] if study.get("pubdate") else "",
-                        "abstract": "",  # Would need another API call
+                        "abstract": abstract,  # Now includes real abstract!
                         "doi": study.get("elocationid", ""),
                         "database": "PubMed",
                     })
