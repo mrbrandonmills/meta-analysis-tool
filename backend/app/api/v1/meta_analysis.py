@@ -37,13 +37,13 @@ async def run_workflow_in_background(analysis_id: str):
     This function runs independently after the HTTP response is sent,
     allowing long-running workflows without HTTP timeouts.
     """
-    from app.db.session import async_session_maker
+    from app.db.session import async_session
 
     try:
         logger.info(f"Starting background workflow for analysis {analysis_id}")
 
         # Create new database session for background task
-        async with async_session_maker() as db:
+        async with async_session() as db:
             service = MetaAnalysisService(db)
             analysis_uuid = UUID(analysis_id)
 
@@ -168,7 +168,7 @@ async def run_workflow_in_background(analysis_id: str):
     except Exception as e:
         logger.error(f"Error in background workflow for {analysis_id}: {e}", exc_info=True)
         try:
-            async with async_session_maker() as db:
+            async with async_session() as db:
                 service = MetaAnalysisService(db)
                 await service.update_meta_analysis_status(UUID(analysis_id), MetaAnalysisStatus.FAILED)
                 await db.commit()
