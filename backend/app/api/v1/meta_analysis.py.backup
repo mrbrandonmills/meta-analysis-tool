@@ -2,7 +2,7 @@
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends
 from loguru import logger
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -31,151 +31,6 @@ router = APIRouter()
 orchestrator = AgentOrchestrator()
 
 
-async def run_workflow_in_background(analysis_id: str):
-    """Run the complete meta-analysis workflow in the background.
-
-    This function runs independently after the HTTP response is sent,
-    allowing long-running workflows without HTTP timeouts.
-    """
-    from app.db.session import async_session_maker
-
-    try:
-        logger.info(f"Starting background workflow for analysis {analysis_id}")
-
-        # Create new database session for background task
-        async with async_session_maker() as db:
-            service = MetaAnalysisService(db)
-            analysis_uuid = UUID(analysis_id)
-
-            # Get meta-analysis from database
-            meta_analysis = await service.get_meta_analysis(analysis_uuid)
-            if not meta_analysis:
-                logger.error(f"Meta-analysis not found in background: {analysis_id}")
-                return
-
-            # Get coordinator state
-            coordinator_config = AgentConfig(
-                name="Coordinator",
-                role="coordinator",  # type: ignore
-                expert_profile=meta_analysis.expert_name,
-            )
-            coordinator = await service.restore_coordinator(analysis_uuid, coordinator_config)
-
-            if not coordinator:
-                logger.error(f"Coordinator not found for {analysis_id} in background workflow")
-                await service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.FAILED)
-                await db.commit()
-                return
-
-            # Initialize search agent
-            search_config = AgentConfig(name="SearchAgent", role="search")  # type: ignore
-            search_agent = SearchAgent(search_config)
-            orchestrator.register_agent(search_agent)
-
-            # Execute search
-            search_input = {
-                "research_question": meta_analysis.research_question,
-                "search_terms": ["mindfulness", "anxiety", "RCT"],  # TODO: Extract from workflow
-                "databases": meta_analysis.databases or ["pubmed"],
-            }
-            logger.info(f"Running SearchAgent for {analysis_id}")
-            search_results = await search_agent.process(search_input)
-
-            # Log search agent execution
-            await service.log_agent_execution(
-                analysis_id=analysis_uuid,
-                agent_name=search_agent.config.name,
-                agent_role="search",
-                agent_id=search_agent.id,
-                input_data=search_input,
-                output_data=search_results,
-                status="success",
-            )
-            await db.commit()
-
-            # Initialize screening agent
-            screening_config = AgentConfig(name="ScreeningAgent", role="screening")  # type: ignore
-            screening_agent = ScreeningAgent(screening_config)
-            orchestrator.register_agent(screening_agent)
-
-            # Execute screening
-            screening_input = {
-                "studies": search_results["studies"],
-                "inclusion_criteria": meta_analysis.inclusion_criteria or [
-                    "Randomized controlled trial",
-                    "Adult population (18+)",
-                    "Mindfulness-based intervention",
-                    "Anxiety as outcome measure",
-                ],
-                "exclusion_criteria": meta_analysis.exclusion_criteria or [
-                    "Non-English language",
-                    "Qualitative studies",
-                    "Case studies",
-                ],
-                "screening_level": "title_abstract",
-            }
-            logger.info(f"Running ScreeningAgent for {analysis_id}")
-            screening_results = await screening_agent.process(screening_input)
-
-            # Log screening agent execution
-            await service.log_agent_execution(
-                analysis_id=analysis_uuid,
-                agent_name=screening_agent.config.name,
-                agent_role="screening",
-                agent_id=screening_agent.id,
-                input_data=screening_input,
-                output_data=screening_results,
-                status="success",
-            )
-            await db.commit()
-
-            # Initialize credibility agent
-            credibility_config = AgentConfig(name="CredibilityAgent", role="quality_assessment")  # type: ignore
-            credibility_agent = CredibilityAgent(credibility_config)
-            orchestrator.register_agent(credibility_agent)
-
-            # Evaluate credibility of included studies
-            credibility_input = {
-                "studies": screening_results["included"],
-                "require_peer_review": meta_analysis.peer_review_only == "true",
-            }
-            logger.info(f"Running CredibilityAgent for {analysis_id}")
-            credibility_results = await credibility_agent.process(credibility_input)
-
-            # Log credibility agent execution
-            await service.log_agent_execution(
-                analysis_id=analysis_uuid,
-                agent_name=credibility_agent.config.name,
-                agent_role="quality_assessment",
-                agent_id=credibility_agent.id,
-                input_data=credibility_input,
-                output_data=credibility_results,
-                status="success",
-            )
-
-            # Update coordinator state with progress
-            await service.save_coordinator_state(
-                analysis_id=analysis_uuid,
-                coordinator=coordinator,
-            )
-
-            # Update status to completed
-            await service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.COMPLETED)
-            await db.commit()
-
-            logger.info(f"Background workflow completed successfully for {analysis_id}")
-
-    except Exception as e:
-        logger.error(f"Error in background workflow for {analysis_id}: {e}", exc_info=True)
-        try:
-            async with async_session_maker() as db:
-                service = MetaAnalysisService(db)
-                await service.update_meta_analysis_status(UUID(analysis_id), MetaAnalysisStatus.FAILED)
-                await db.commit()
-        except Exception as db_error:
-            logger.error(f"Failed to update status to FAILED: {db_error}")
-
-
 class MetaAnalysisRequest(BaseModel):
     """Request to create a new meta-analysis."""
 
@@ -194,7 +49,7 @@ class MetaAnalysisResponse(BaseModel):
     id: str
     status: str
     message: str
-    workflow: Optional[dict] = None
+    workflow: dict
 
 
 class QuestionRequest(BaseModel):
@@ -213,9 +68,10 @@ async def create_meta_analysis(
 
     This endpoint:
     1. Creates database record for meta-analysis
-    2. Returns the analysis ID
-
-    Note: Workflow planning happens in the /execute endpoint.
+    2. Initializes the coordinator agent
+    3. Creates a workflow plan
+    4. Persists coordinator state to database
+    5. Returns the plan for approval
     """
     try:
         logger.info(f"Creating meta-analysis: {request.topic}")
@@ -251,16 +107,51 @@ async def create_meta_analysis(
             expert_name=request.expert_name,
         )
 
-        # Commit the meta-analysis record
+        # Initialize coordinator agent
+        coordinator_config = AgentConfig(
+            name="Coordinator",
+            role="coordinator",  # type: ignore
+            expert_profile=request.expert_name,
+        )
+        coordinator = CoordinatorAgent(coordinator_config)
+        orchestrator.register_agent(coordinator)
+
+        # Process the request to create workflow
+        result = await coordinator.process(request.model_dump())
+
+        # Save coordinator state to database
+        await service.save_coordinator_state(
+            analysis_id=meta_analysis.id,
+            coordinator=coordinator,
+            workflow_plan=result,
+        )
+
+        # Update status to workflow_created
+        await service.update_meta_analysis_status(
+            analysis_id=meta_analysis.id,
+            status=MetaAnalysisStatus.WORKFLOW_CREATED,
+        )
+
+        # Log coordinator execution
+        await service.log_agent_execution(
+            analysis_id=meta_analysis.id,
+            agent_name=coordinator.config.name,
+            agent_role="coordinator",
+            agent_id=coordinator.id,
+            input_data=request.model_dump(),
+            output_data=result,
+            status="success",
+        )
+
         await db.commit()
 
-        logger.info(f"Created meta-analysis {meta_analysis.id}")
+        logger.info(f"Created and persisted meta-analysis {meta_analysis.id}")
 
         return MetaAnalysisResponse(
             id=str(meta_analysis.id),
-            status="created",
-            message="Meta-analysis created successfully. Use /execute endpoint to run the workflow.",
-            workflow=None,
+            status="workflow_created",
+            message="Meta-analysis workflow created successfully",
+            workflow=result,
         )
 
     except Exception as e:
@@ -272,20 +163,16 @@ async def create_meta_analysis(
 @router.post("/meta-analysis/execute/{analysis_id}")
 async def execute_meta_analysis(
     analysis_id: str,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_db),
 ):
-    """Execute a meta-analysis workflow in the background.
+    """Execute a meta-analysis workflow.
 
     This endpoint:
-    1. Validates the meta-analysis exists
-    2. Initializes the coordinator (if first execution)
-    3. Updates status to IN_PROGRESS
-    4. Starts the workflow in background
-    5. Returns immediately with status
-
-    The actual workflow runs asynchronously. Use the status endpoint
-    to check progress.
+    1. Retrieves coordinator state from database
+    2. Runs the search agent
+    3. Runs the screening agent
+    4. Persists all agent executions
+    5. Returns preliminary results
     """
     try:
         logger.info(f"Executing meta-analysis: {analysis_id}")
@@ -303,106 +190,152 @@ async def execute_meta_analysis(
                 detail=f"Meta-analysis not found. Analysis ID: {analysis_id}"
             )
 
-        # Check if already in progress or completed
-        if meta_analysis.status == MetaAnalysisStatus.IN_PROGRESS:
-            return {
-                "analysis_id": analysis_id,
-                "status": "in_progress",
-                "message": "Workflow already running. Check status endpoint for progress.",
-            }
-
-        if meta_analysis.status == MetaAnalysisStatus.COMPLETED:
-            return {
-                "analysis_id": analysis_id,
-                "status": "completed",
-                "message": "Workflow already completed. Use status endpoint for results.",
-            }
-
-        # Restore coordinator from database, or create new one if first execution
+        # Restore coordinator from database
         coordinator_config = AgentConfig(
             name="Coordinator",
             role="coordinator",  # type: ignore
             expert_profile=meta_analysis.expert_name,
         )
         coordinator = await service.restore_coordinator(analysis_uuid, coordinator_config)
-
         if not coordinator:
-            # First execution - create and initialize coordinator
-            logger.info(f"No existing coordinator for {analysis_id}, initializing new one")
-            coordinator = CoordinatorAgent(coordinator_config)
-
-            # Create initial workflow plan
-            workflow_plan = {
-                "research_question": meta_analysis.research_question,
-                "topic": meta_analysis.topic,
-                "steps": [
-                    "Search databases for relevant studies",
-                    "Screen titles and abstracts",
-                    "Assess study credibility and quality",
-                    "Extract full-text (if available)",
-                    "Perform quality assessment",
-                    "Synthesize results"
-                ],
-                "databases": meta_analysis.databases,
-                "inclusion_criteria": meta_analysis.inclusion_criteria,
-                "exclusion_criteria": meta_analysis.exclusion_criteria,
-            }
-
-            # Add initial decision to coordinator
-            initial_decision = {
-                "step": "workflow_planning",
-                "action": "execute_search",
-                "reasoning": f"Starting meta-analysis workflow for: {meta_analysis.research_question}",
-                "next_agent": "SearchAgent",
-                "parameters": {
-                    "research_question": meta_analysis.research_question,
-                    "databases": meta_analysis.databases,
-                }
-            }
-            coordinator.decisions = [initial_decision]
-
-            # Save initial coordinator state to database
-            await service.save_coordinator_state(
-                analysis_id=analysis_uuid,
-                coordinator=coordinator,
-                workflow_plan=workflow_plan
+            logger.error(f"Coordinator state not found for analysis_id: {analysis_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Coordinator state not found. Analysis ID: {analysis_id}"
             )
-            logger.info(f"Created and saved initial coordinator state for {analysis_id}")
 
         # Update status to in_progress
         await service.update_meta_analysis_status(analysis_uuid, MetaAnalysisStatus.IN_PROGRESS)
+
+        # Initialize search agent
+        search_config = AgentConfig(name="SearchAgent", role="search")  # type: ignore
+        search_agent = SearchAgent(search_config)
+        orchestrator.register_agent(search_agent)
+
+        # Get research question from coordinator's last decision
+        if not coordinator.decisions:
+            raise HTTPException(status_code=400, detail="No workflow found")
+
+        # Execute search
+        search_input = {
+            "research_question": meta_analysis.research_question,
+            "search_terms": ["mindfulness", "anxiety", "RCT"],  # TODO: Extract from workflow
+            "databases": meta_analysis.databases or ["pubmed"],
+        }
+        search_results = await search_agent.process(search_input)
+
+        # Log search agent execution
+        await service.log_agent_execution(
+            analysis_id=analysis_uuid,
+            agent_name=search_agent.config.name,
+            agent_role="search",
+            agent_id=search_agent.id,
+            input_data=search_input,
+            output_data=search_results,
+            status="success",
+        )
+
+        # Initialize screening agent
+        screening_config = AgentConfig(name="ScreeningAgent", role="screening")  # type: ignore
+        screening_agent = ScreeningAgent(screening_config)
+        orchestrator.register_agent(screening_agent)
+
+        # Execute screening
+        screening_input = {
+            "studies": search_results["studies"],
+            "inclusion_criteria": meta_analysis.inclusion_criteria or [
+                "Randomized controlled trial",
+                "Adult population (18+)",
+                "Mindfulness-based intervention",
+                "Anxiety as outcome measure",
+            ],
+            "exclusion_criteria": meta_analysis.exclusion_criteria or [
+                "Non-English language",
+                "Qualitative studies",
+                "Case studies",
+            ],
+            "screening_level": "title_abstract",
+        }
+        screening_results = await screening_agent.process(screening_input)
+
+        # Log screening agent execution
+        await service.log_agent_execution(
+            analysis_id=analysis_uuid,
+            agent_name=screening_agent.config.name,
+            agent_role="screening",
+            agent_id=screening_agent.id,
+            input_data=screening_input,
+            output_data=screening_results,
+            status="success",
+        )
+
+        # Initialize credibility agent
+        credibility_config = AgentConfig(name="CredibilityAgent", role="quality_assessment")  # type: ignore
+        credibility_agent = CredibilityAgent(credibility_config)
+        orchestrator.register_agent(credibility_agent)
+
+        # Evaluate credibility of included studies
+        credibility_input = {
+            "studies": screening_results["included"],
+            "require_peer_review": meta_analysis.peer_review_only == "true",
+        }
+        credibility_results = await credibility_agent.process(credibility_input)
+
+        # Log credibility agent execution
+        await service.log_agent_execution(
+            analysis_id=analysis_uuid,
+            agent_name=credibility_agent.config.name,
+            agent_role="quality_assessment",
+            agent_id=credibility_agent.id,
+            input_data=credibility_input,
+            output_data=credibility_results,
+            status="success",
+        )
+
+        # Update coordinator state with progress
+        await service.save_coordinator_state(
+            analysis_id=analysis_uuid,
+            coordinator=coordinator,
+        )
+
+        # Commit all changes
         await db.commit()
-
-        # Start workflow in background
-        background_tasks.add_task(run_workflow_in_background, analysis_id)
-
-        logger.info(f"Workflow started in background for {analysis_id}")
 
         return {
             "analysis_id": analysis_id,
-            "status": "processing",
-            "message": "Meta-analysis workflow started in background. Use the status endpoint to check progress.",
-            "status_endpoint": f"/api/v1/meta-analysis/status/{analysis_id}",
+            "status": "in_progress",
+            "search_results": {
+                "total_found": search_results["total_results"],
+                "databases": search_results["databases_searched"],
+            },
+            "screening_results": {
+                "total_screened": screening_results["total_screened"],
+                "included": len(screening_results["included"]),
+                "excluded": len(screening_results["excluded"]),
+                "uncertain": len(screening_results["uncertain"]),
+            },
+            "credibility_results": {
+                "total_evaluated": credibility_results["total_evaluated"],
+                "breakdown": credibility_results["credibility_breakdown"],
+                "studies_with_scores": credibility_results["studies"],
+            },
+            "next_steps": [
+                "Full-text screening",
+                "Quality assessment",
+                "Data extraction",
+            ],
         }
 
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
     except Exception as e:
-        logger.error(f"Error executing meta-analysis {analysis_id}: {e}", exc_info=True)
+        logger.error(f"Error executing meta-analysis: {e}")
         await db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to execute meta-analysis workflow: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/meta-analysis/status/{analysis_id}")
 async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db)):
-    """Get the detailed status of a meta-analysis including agent execution progress."""
+    """Get the status of a meta-analysis from database."""
     try:
-        from app.models.meta_analysis import AgentExecution
-
         service = MetaAnalysisService(db)
 
         # Get meta-analysis from database
@@ -418,41 +351,12 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
         # Get coordinator state
         coordinator_state = await service.get_coordinator_state(analysis_uuid)
 
-        # Get agent execution logs
-        result = await db.execute(
-            select(AgentExecution)
-            .where(AgentExecution.analysis_id == analysis_uuid)
-            .order_by(AgentExecution.created_at)
-        )
-        agent_executions = result.scalars().all()
-
-        # Build agent progress summary
-        agent_progress = []
-        for execution in agent_executions:
-            agent_progress.append({
-                "agent_name": execution.agent_name,
-                "agent_role": execution.agent_role,
-                "status": execution.status,
-                "completed_at": execution.created_at.isoformat(),
-                "execution_time_ms": execution.execution_time_ms,
-            })
-
-        # Determine overall progress
-        completed_agents = len([e for e in agent_executions if e.status == "success"])
-        total_expected_agents = 3  # Search, Screening, Credibility
-
-        progress_percentage = (completed_agents / total_expected_agents * 100) if total_expected_agents > 0 else 0
-
         return {
             "id": analysis_id,
             "status": meta_analysis.status.value,
-            "progress_percentage": round(progress_percentage, 1),
             "decisions": len(coordinator_state.decisions) if coordinator_state else 0,
             "created_at": meta_analysis.created_at.isoformat(),
             "updated_at": meta_analysis.updated_at.isoformat(),
-            "agent_progress": agent_progress,
-            "agents_completed": completed_agents,
-            "agents_total": total_expected_agents,
         }
 
     except ValueError:

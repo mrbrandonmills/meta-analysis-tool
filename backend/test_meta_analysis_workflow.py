@@ -24,7 +24,7 @@ async def test_workflow():
     print("=" * 60)
     print()
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=300.0) as client:  # 5 minutes for agents to complete
         # Step 1: Create a meta-analysis
         print("Step 1: Creating meta-analysis...")
         create_data = {
@@ -75,14 +75,14 @@ async def test_workflow():
         print(f"   Decisions: {status_result['decisions']}")
         print()
 
-        # Step 3: Execute the workflow (THE FIX BEING TESTED)
-        print("Step 3: Executing workflow (testing fix)...")
-        print("   This should now create coordinator automatically if missing...")
+        # Step 3: Execute the workflow (now runs in background)
+        print("Step 3: Starting workflow in background...")
+        print("   This should return immediately and run asynchronously...")
 
         response = await client.post(f"{BASE_URL}/meta-analysis/execute/{analysis_id}")
 
         if response.status_code != 200:
-            print(f"❌ FAILED to execute workflow")
+            print(f"❌ FAILED to start workflow")
             print(f"   Status: {response.status_code}")
             print(f"   Response: {response.text}")
 
@@ -98,15 +98,50 @@ async def test_workflow():
             return False
 
         execution_result = response.json()
-        print(f"✅ Workflow executed successfully!")
+        print(f"✅ Workflow started in background!")
         print(f"   Status: {execution_result['status']}")
-        print(f"   Search results: {execution_result['search_results']}")
-        print(f"   Screening results: {execution_result['screening_results']}")
-        print(f"   Credibility results: {execution_result['credibility_results']}")
+        print(f"   Message: {execution_result['message']}")
         print()
 
-        # Step 4: Verify coordinator state was created
-        print("Step 4: Verifying coordinator state...")
+        # Step 4: Poll status until workflow completes
+        print("Step 4: Polling status (waiting for completion)...")
+        max_polls = 60  # 5 minutes max (5 second intervals)
+        poll_count = 0
+
+        while poll_count < max_polls:
+            import asyncio
+            await asyncio.sleep(5)  # Poll every 5 seconds
+
+            response = await client.get(f"{BASE_URL}/meta-analysis/status/{analysis_id}")
+            if response.status_code != 200:
+                print(f"   ❌ Failed to get status")
+                return False
+
+            status_data = response.json()
+            current_status = status_data['status']
+            progress = status_data.get('progress_percentage', 0)
+            agents_completed = status_data.get('agents_completed', 0)
+            agents_total = status_data.get('agents_total', 0)
+
+            print(f"   [{poll_count * 5}s] Status: {current_status} | Progress: {progress}% | Agents: {agents_completed}/{agents_total}")
+
+            if current_status == "completed":
+                print(f"\n✅ Workflow completed!")
+                print(f"   Final status: {status_data}")
+                break
+            elif current_status == "failed":
+                print(f"\n❌ Workflow failed!")
+                print(f"   Status data: {status_data}")
+                return False
+
+            poll_count += 1
+
+        if poll_count >= max_polls:
+            print(f"\n⚠️  Workflow timed out after {max_polls * 5} seconds")
+            return False
+
+        # Step 5: Verify coordinator state was created
+        print("\nStep 5: Verifying coordinator state...")
         response = await client.get(f"{BASE_URL}/meta-analysis/status/{analysis_id}")
 
         if response.status_code != 200:
@@ -117,6 +152,7 @@ async def test_workflow():
         print(f"✅ Final status retrieved")
         print(f"   Status: {final_status['status']}")
         print(f"   Decisions: {final_status['decisions']}")
+        print(f"   Agents completed: {final_status['agents_completed']}/{final_status['agents_total']}")
 
         if final_status['decisions'] > 0:
             print(f"   ✅ Coordinator has decisions (workflow initialized)")
