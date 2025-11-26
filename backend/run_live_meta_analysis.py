@@ -53,7 +53,8 @@ async def run_meta_analysis():
         analysis_id = result["id"]
         print(f"✅ Created successfully!")
         print(f"   ID: {analysis_id}")
-        print(f"   Topic: {result['topic']}")
+        if "topic" in result:
+            print(f"   Topic: {result['topic']}")
         print()
         
         # Step 2: Execute workflow
