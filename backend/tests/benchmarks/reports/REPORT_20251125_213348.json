@@ -1,0 +1,96 @@
+{
+  "timestamp": "2025-11-25T21:33:48.301860",
+  "benchmarks": [
+    {
+      "benchmark_id": "omega3_depression_v1",
+      "timestamp": "2025-11-25T21:33:48.301846",
+      "reference": {
+        "title": "Omega-3 fatty acids for depression: Based on published meta-analysis patterns",
+        "doi": "10.REFERENCE/SIMULATED",
+        "note": "This benchmark uses simulated data following realistic patterns from published Cochrane reviews on omega-3 and depression",
+        "effect_type": "standardized_mean_difference",
+        "expected_effect_model": "random",
+        "expected_effect_point": -0.28,
+        "expected_effect_ci": [
+          -0.4,
+          -0.16
+        ],
+        "expected_i2_range": [
+          40,
+          55
+        ],
+        "expected_p_value": 0.002,
+        "expected_direction": "favors_treatment",
+        "expected_pooling_decision": "allow"
+      },
+      "system_output": {
+        "pooled_effect": -0.288,
+        "ci_low": -0.417,
+        "ci_high": -0.153,
+        "i_squared": 46.4,
+        "p_value": 0.002,
+        "model": "random",
+        "direction": "favors_treatment",
+        "pooling_allowed": true,
+        "n_studies": 11
+      },
+      "comparison": {
+        "checks": {
+          "direction_match": {
+            "expected": "favors_treatment",
+            "actual": "favors_treatment",
+            "pass": true,
+            "required": true
+          },
+          "effect_magnitude": {
+            "expected": -0.28,
+            "actual": -0.288,
+            "tolerance": 0.05,
+            "difference": 0.008,
+            "pass": true,
+            "required": true
+          },
+          "ci_overlap": {
+            "expected": [
+              -0.4,
+              -0.16
+            ],
+            "actual": [
+              -0.417,
+              -0.153
+            ],
+            "pass": true,
+            "required": true
+          },
+          "i2_range": {
+            "expected_range": [
+              40,
+              55
+            ],
+            "actual": 46.4,
+            "in_range": true,
+            "acceptable": true,
+            "pass": true,
+            "required": false
+          },
+          "pooling_decision": {
+            "expected": true,
+            "actual": true,
+            "pass": true,
+            "required": true
+          }
+        },
+        "required_checks_count": 4,
+        "required_checks_passed": 4,
+        "overall_pass": true
+      },
+      "pass": true
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 100.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "benchmark_id": "omega3_depression_v1",
+  "timestamp": "2025-11-25T21:37:35.853813",
+  "status": "success",
+  "meta_analysis": {
+    "effect_size": -0.288,
+    "ci_lower": -0.386,
+    "ci_upper": -0.178,
+    "p_value": 0.002,
+    "model": "random"
+  },
+  "heterogeneity": {
+    "i_squared": 47.8,
+    "interpretation": "low"
+  },
+  "n_studies": 11,
+  "reference": {
+    "title": "Omega-3 fatty acids for depression: Based on published meta-analysis patterns",
+    "doi": "10.REFERENCE/SIMULATED",
+    "note": "This benchmark uses simulated data following realistic patterns from published Cochrane reviews on omega-3 and depression",
+    "effect_type": "standardized_mean_difference",
+    "expected_effect_model": "random",
+    "expected_effect_point": -0.28,
+    "expected_effect_ci": [
+      -0.4,
+      -0.16
+    ],
+    "expected_i2_range": [
+      40,
+      55
+    ],
+    "expected_p_value": 0.002,
+    "expected_direction": "favors_treatment",
+    "expected_pooling_decision": "allow"
+  }
+}

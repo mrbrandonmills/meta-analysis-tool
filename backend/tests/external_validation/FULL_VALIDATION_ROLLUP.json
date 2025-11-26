@@ -1,0 +1,107 @@
+{
+  "numeric_summary_present": true,
+  "llm_summary_present": true,
+  "numeric_summary_error": null,
+  "llm_summary_error": null,
+  "total_reports_numeric": 8,
+  "total_reports_llm": 0,
+  "numeric_all_ok": false,
+  "details": {
+    "numeric": {
+      "total_reports": 8,
+      "num_ok": 5,
+      "num_failed": 3,
+      "reports": [
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/REPORT_20251125_213348.json",
+          "status": "",
+          "checks_passed": [],
+          "failures": [
+            "Pooled analysis missing effect_size.",
+            "Pooled analysis missing CI bounds.",
+            "Pooled analysis missing p_value."
+          ],
+          "ok": false
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/REPORT_20251125_213708.json",
+          "status": "",
+          "checks_passed": [],
+          "failures": [
+            "Pooled analysis missing effect_size.",
+            "Pooled analysis missing CI bounds.",
+            "Pooled analysis missing p_value."
+          ],
+          "ok": false
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/REPORT_20251125_213735.json",
+          "status": "",
+          "checks_passed": [],
+          "failures": [
+            "Pooled analysis missing effect_size.",
+            "Pooled analysis missing CI bounds.",
+            "Pooled analysis missing p_value."
+          ],
+          "ok": false
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/cardio_bp_reduction_v1.json",
+          "status": "success",
+          "checks_passed": [
+            "Pooled analysis includes effect size, CI, and p-value.",
+            "I\u00b2 within [0, 100]."
+          ],
+          "failures": [],
+          "ok": true
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/neuro_cognition_v1.json",
+          "status": "success",
+          "checks_passed": [
+            "Pooled analysis includes effect size, CI, and p-value.",
+            "I\u00b2 within [0, 100]."
+          ],
+          "failures": [],
+          "ok": true
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/omega3_depression_v1.json",
+          "status": "success",
+          "checks_passed": [
+            "Pooled analysis includes effect size, CI, and p-value.",
+            "I\u00b2 within [0, 100]."
+          ],
+          "failures": [],
+          "ok": true
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/oncology_adjuvant_v1.json",
+          "status": "success",
+          "checks_passed": [
+            "Pooled analysis includes effect size, CI, and p-value.",
+            "I\u00b2 within [0, 100]."
+          ],
+          "failures": [],
+          "ok": true
+        },
+        {
+          "file": "/Users/brandon/meta-analysis-tool/backend/tests/benchmarks/reports/smoking_cessation_v1.json",
+          "status": "success",
+          "checks_passed": [
+            "Pooled analysis includes effect size, CI, and p-value.",
+            "I\u00b2 within [0, 100]."
+          ],
+          "failures": [],
+          "ok": true
+        }
+      ]
+    },
+    "llm": {
+      "total_reports": 0,
+      "entries": [],
+      "instructions": "For each entry, open the listed report file, copy its full contents, and paste it together with the corresponding claude_prompt or gemini_prompt into the respective model. Save the model's critique separately if you want a full external review archive."
+    }
+  },
+  "overall_status": "NUMERIC_ISSUES_DETECTED"
+}

@@ -1,0 +1,436 @@
+{
+  "timestamp": "2025-11-25T21:37:08.249493",
+  "benchmarks": [
+    {
+      "benchmark_id": "cardio_bp_reduction_v1",
+      "timestamp": "2025-11-25T21:37:08.248523",
+      "reference": {
+        "title": "Antihypertensive Drug Treatment and Blood Pressure Reduction: Based on published Cochrane review patterns",
+        "doi": "10.REFERENCE/SIMULATED",
+        "note": "This benchmark uses simulated data following realistic patterns from published Cochrane reviews on antihypertensive medications",
+        "effect_type": "mean_difference",
+        "expected_effect_model": "random",
+        "expected_effect_point": -8.5,
+        "expected_effect_ci": [
+          -10.2,
+          -6.8
+        ],
+        "expected_i2_range": [
+          25,
+          40
+        ],
+        "expected_p_value": 0.0001,
+        "expected_direction": "favors_treatment",
+        "expected_pooling_decision": "allow"
+      },
+      "system_output": {
+        "pooled_effect": -8.505,
+        "ci_low": -10.196,
+        "ci_high": -6.81,
+        "i_squared": 37.5,
+        "p_value": 0.0001,
+        "model": "random",
+        "direction": "favors_treatment",
+        "pooling_allowed": true,
+        "n_studies": 7
+      },
+      "comparison": {
+        "checks": {
+          "direction_match": {
+            "expected": "favors_treatment",
+            "actual": "favors_treatment",
+            "pass": true,
+            "required": true
+          },
+          "effect_magnitude": {
+            "expected": -8.5,
+            "actual": -8.505,
+            "tolerance": 1.0,
+            "difference": 0.005,
+            "pass": true,
+            "required": true
+          },
+          "ci_overlap": {
+            "expected": [
+              -10.2,
+              -6.8
+            ],
+            "actual": [
+              -10.196,
+              -6.81
+            ],
+            "pass": true,
+            "required": true
+          },
+          "i2_range": {
+            "expected_range": [
+              25,
+              40
+            ],
+            "actual": 37.5,
+            "in_range": true,
+            "acceptable": true,
+            "pass": true,
+            "required": false
+          },
+          "pooling_decision": {
+            "expected": true,
+            "actual": true,
+            "pass": true,
+            "required": true
+          }
+        },
+        "required_checks_count": 4,
+        "required_checks_passed": 4,
+        "overall_pass": true
+      },
+      "pass": true
+    },
+    {
+      "benchmark_id": "neuro_cognition_v1",
+      "timestamp": "2025-11-25T21:37:08.248770",
+      "reference": {
+        "title": "Cognitive Training and Memory Function in Older Adults: Based on published meta-analysis patterns",
+        "doi": "10.REFERENCE/SIMULATED",
+        "note": "This benchmark uses simulated data following realistic patterns from published cognitive intervention meta-analyses",
+        "effect_type": "standardized_mean_difference",
+        "expected_effect_model": "random",
+        "expected_effect_point": 0.32,
+        "expected_effect_ci": [
+          0.18,
+          0.46
+        ],
+        "expected_i2_range": [
+          58,
+          72
+        ],
+        "expected_p_value": 0.001,
+        "expected_direction": "favors_treatment",
+        "expected_pooling_decision": "allow"
+      },
+      "system_output": {
+        "pooled_effect": 0.326,
+        "ci_low": 0.193,
+        "ci_high": 0.449,
+        "i_squared": 62.1,
+        "p_value": 0.001,
+        "model": "random",
+        "direction": "favors_control",
+        "pooling_allowed": true,
+        "n_studies": 13
+      },
+      "comparison": {
+        "checks": {
+          "direction_match": {
+            "expected": "favors_treatment",
+            "actual": "favors_control",
+            "pass": false,
+            "required": true
+          },
+          "effect_magnitude": {
+            "expected": 0.32,
+            "actual": 0.326,
+            "tolerance": 0.05,
+            "difference": 0.006,
+            "pass": true,
+            "required": true
+          },
+          "ci_overlap": {
+            "expected": [
+              0.18,
+              0.46
+            ],
+            "actual": [
+              0.193,
+              0.449
+            ],
+            "pass": true,
+            "required": true
+          },
+          "i2_range": {
+            "expected_range": [
+              58,
+              72
+            ],
+            "actual": 62.1,
+            "in_range": true,
+            "acceptable": true,
+            "pass": true,
+            "required": false
+          },
+          "pooling_decision": {
+            "expected": true,
+            "actual": true,
+            "pass": true,
+            "required": true
+          }
+        },
+        "required_checks_count": 4,
+        "required_checks_passed": 3,
+        "overall_pass": false
+      },
+      "pass": false
+    },
+    {
+      "benchmark_id": "omega3_depression_v1",
+      "timestamp": "2025-11-25T21:37:08.249064",
+      "reference": {
+        "title": "Omega-3 fatty acids for depression: Based on published meta-analysis patterns",
+        "doi": "10.REFERENCE/SIMULATED",
+        "note": "This benchmark uses simulated data following realistic patterns from published Cochrane reviews on omega-3 and depression",
+        "effect_type": "standardized_mean_difference",
+        "expected_effect_model": "random",
+        "expected_effect_point": -0.28,
+        "expected_effect_ci": [
+          -0.4,
+          -0.16
+        ],
+        "expected_i2_range": [
+          40,
+          55
+        ],
+        "expected_p_value": 0.002,
+        "expected_direction": "favors_treatment",
+        "expected_pooling_decision": "allow"
+      },
+      "system_output": {
+        "pooled_effect": -0.296,
+        "ci_low": -0.4,
+        "ci_high": -0.157,
+        "i_squared": 46.7,
+        "p_value": 0.002,
+        "model": "random",
+        "direction": "favors_treatment",
+        "pooling_allowed": true,
+        "n_studies": 11
+      },
+      "comparison": {
+        "checks": {
+          "direction_match": {
+            "expected": "favors_treatment",
+            "actual": "favors_treatment",
+            "pass": true,
+            "required": true
+          },
+          "effect_magnitude": {
+            "expected": -0.28,
+            "actual": -0.296,
+            "tolerance": 0.05,
+            "difference": 0.016,
+            "pass": true,
+            "required": true
+          },
+          "ci_overlap": {
+            "expected": [
+              -0.4,
+              -0.16
+            ],
+            "actual": [
+              -0.4,
+              -0.157
+            ],
+            "pass": true,
+            "required": true
+          },
+          "i2_range": {
+            "expected_range": [
+              40,
+              55
+            ],
+            "actual": 46.7,
+            "in_range": true,
+            "acceptable": true,
+            "pass": true,
+            "required": false
+          },
+          "pooling_decision": {
+            "expected": true,
+            "actual": true,
+            "pass": true,
+            "required": true
+          }
+        },
+        "required_checks_count": 4,
+        "required_checks_passed": 4,
+        "overall_pass": true
+      },
+      "pass": true
+    },
+    {
+      "benchmark_id": "oncology_adjuvant_v1",
+      "timestamp": "2025-11-25T21:37:08.249276",
+      "reference": {
+        "title": "Adjuvant Chemotherapy and Overall Survival in Breast Cancer: Based on published meta-analysis patterns",
+        "doi": "10.REFERENCE/SIMULATED",
+        "note": "This benchmark uses simulated data following realistic patterns from published oncology meta-analyses",
+        "effect_type": "hazard_ratio",
+        "expected_effect_model": "random",
+        "expected_effect_point": 0.75,
+        "expected_effect_ci": [
+          0.68,
+          0.84
+        ],
+        "expected_i2_range": [
+          35,
+          50
+        ],
+        "expected_p_value": 0.0001,
+        "expected_direction": "favors_treatment",
+        "expected_pooling_decision": "allow"
+      },
+      "system_output": {
+        "pooled_effect": 0.732,
+        "ci_low": 0.696,
+        "ci_high": 0.855,
+        "i_squared": 44.3,
+        "p_value": 0.0001,
+        "model": "random",
+        "direction": "favors_control",
+        "pooling_allowed": true,
+        "n_studies": 9
+      },
+      "comparison": {
+        "checks": {
+          "direction_match": {
+            "expected": "favors_treatment",
+            "actual": "favors_control",
+            "pass": false,
+            "required": true
+          },
+          "effect_magnitude": {
+            "expected": 0.75,
+            "actual": 0.732,
+            "tolerance": 0.05,
+            "difference": 0.018,
+            "pass": true,
+            "required": true
+          },
+          "ci_overlap": {
+            "expected": [
+              0.68,
+              0.84
+            ],
+            "actual": [
+              0.696,
+              0.855
+            ],
+            "pass": true,
+            "required": true
+          },
+          "i2_range": {
+            "expected_range": [
+              35,
+              50
+            ],
+            "actual": 44.3,
+            "in_range": true,
+            "acceptable": true,
+            "pass": true,
+            "required": false
+          },
+          "pooling_decision": {
+            "expected": true,
+            "actual": true,
+            "pass": true,
+            "required": true
+          }
+        },
+        "required_checks_count": 4,
+        "required_checks_passed": 3,
+        "overall_pass": false
+      },
+      "pass": false
+    },
+    {
+      "benchmark_id": "smoking_cessation_v1",
+      "timestamp": "2025-11-25T21:37:08.249486",
+      "reference": {
+        "title": "Nicotine Replacement Therapy and Smoking Cessation Rates: Based on published Cochrane review patterns",
+        "doi": "10.REFERENCE/SIMULATED",
+        "note": "This benchmark uses simulated data following realistic patterns from published smoking cessation meta-analyses",
+        "effect_type": "risk_ratio",
+        "expected_effect_model": "random",
+        "expected_effect_point": 1.58,
+        "expected_effect_ci": [
+          1.42,
+          1.76
+        ],
+        "expected_i2_range": [
+          48,
+          65
+        ],
+        "expected_p_value": 0.0001,
+        "expected_direction": "favors_treatment",
+        "expected_pooling_decision": "allow"
+      },
+      "system_output": {
+        "pooled_effect": 1.578,
+        "ci_low": 1.423,
+        "ci_high": 1.763,
+        "i_squared": 58.0,
+        "p_value": 0.0001,
+        "model": "random",
+        "direction": "favors_control",
+        "pooling_allowed": true,
+        "n_studies": 10
+      },
+      "comparison": {
+        "checks": {
+          "direction_match": {
+            "expected": "favors_treatment",
+            "actual": "favors_control",
+            "pass": false,
+            "required": true
+          },
+          "effect_magnitude": {
+            "expected": 1.58,
+            "actual": 1.578,
+            "tolerance": 0.1,
+            "difference": 0.002,
+            "pass": true,
+            "required": true
+          },
+          "ci_overlap": {
+            "expected": [
+              1.42,
+              1.76
+            ],
+            "actual": [
+              1.423,
+              1.763
+            ],
+            "pass": true,
+            "required": true
+          },
+          "i2_range": {
+            "expected_range": [
+              48,
+              65
+            ],
+            "actual": 58.0,
+            "in_range": true,
+            "acceptable": true,
+            "pass": true,
+            "required": false
+          },
+          "pooling_decision": {
+            "expected": true,
+            "actual": true,
+            "pass": true,
+            "required": true
+          }
+        },
+        "required_checks_count": 4,
+        "required_checks_passed": 3,
+        "overall_pass": false
+      },
+      "pass": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 2,
+    "failed": 3,
+    "pass_rate": 40.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "benchmark_id": "cardio_bp_reduction_v1",
+  "timestamp": "2025-11-25T21:37:35.853349",
+  "status": "success",
+  "meta_analysis": {
+    "effect_size": -8.483,
+    "ci_lower": -10.205,
+    "ci_upper": -6.814,
+    "p_value": 0.0001,
+    "model": "random"
+  },
+  "heterogeneity": {
+    "i_squared": 33.7,
+    "interpretation": "low"
+  },
+  "n_studies": 7,
+  "reference": {
+    "title": "Antihypertensive Drug Treatment and Blood Pressure Reduction: Based on published Cochrane review patterns",
+    "doi": "10.REFERENCE/SIMULATED",
+    "note": "This benchmark uses simulated data following realistic patterns from published Cochrane reviews on antihypertensive medications",
+    "effect_type": "mean_difference",
+    "expected_effect_model": "random",
+    "expected_effect_point": -8.5,
+    "expected_effect_ci": [
+      -10.2,
+      -6.8
+    ],
+    "expected_i2_range": [
+      25,
+      40
+    ],
+    "expected_p_value": 0.0001,
+    "expected_direction": "favors_treatment",
+    "expected_pooling_decision": "allow"
+  }
+}

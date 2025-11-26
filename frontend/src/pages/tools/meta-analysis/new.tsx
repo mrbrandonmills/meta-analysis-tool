@@ -40,6 +40,28 @@ interface AnalysisResponse {
   workflow: any
 }
 
+interface MetaAnalysisResult {
+  id: string
+  status: string
+  research_question: string
+  meta_analysis?: {
+    effect_size?: number
+    ci_lower?: number
+    ci_upper?: number
+    p_value?: number
+    model?: string
+  }
+  heterogeneity?: {
+    i_squared?: number
+    q_p_value?: number
+    interpretation?: string
+  }
+  credibility?: {
+    summary?: string
+  }
+  notes?: string
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meta-analysis-tool-production.up.railway.app'
 
 const MetaAnalysisNewPage: React.FC = () => {
@@ -59,6 +81,8 @@ const MetaAnalysisNewPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [reportUrl, setReportUrl] = useState<string | null>(null)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<MetaAnalysisResult | null>(null)
+  const [minStudies, setMinStudies] = useState<number>(3)
 
   // Initialize notifications on mount
   useEffect(() => {
@@ -146,7 +170,20 @@ const MetaAnalysisNewPage: React.FC = () => {
     }
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    // Fetch the analysis result
+    try {
+      if (analysisId) {
+        const response = await fetch(`${API_URL}/api/v1/meta-analysis/${analysisId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setAnalysisResult(data)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch analysis result:', error)
+    }
+
     // Notify user
     notifyComplete(
       'Meta-Analysis Complete!',
@@ -168,6 +205,74 @@ const MetaAnalysisNewPage: React.FC = () => {
     if (reportUrl) {
       window.open(reportUrl, '_blank')
     }
+  }
+
+  // Download helper function
+  const downloadBlob = (data: BlobPart, filename: string, mime: string) => {
+    const blob = new Blob([data], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  // Download JSON report
+  const handleDownloadJson = () => {
+    if (!analysisResult) return
+    downloadBlob(
+      JSON.stringify(analysisResult, null, 2),
+      `meta_analysis_${analysisId || 'report'}.json`,
+      'application/json'
+    )
+  }
+
+  // Build Markdown from result
+  const buildMarkdownFromResult = (result: MetaAnalysisResult): string => {
+    const title = result.research_question || 'Meta-analysis report'
+    const status = result.status || 'unknown'
+    const ma = result.meta_analysis || {}
+    const het = result.heterogeneity || {}
+    const cred = result.credibility || {}
+
+    return [
+      `# ${title}`,
+      '',
+      `**Status:** ${status}`,
+      `**Analysis ID:** ${result.id}`,
+      '',
+      '## Meta-analytic Effect',
+      `- Effect size: ${ma.effect_size ?? 'N/A'}`,
+      `- 95% CI: ${ma.ci_lower ?? 'N/A'} to ${ma.ci_upper ?? 'N/A'}`,
+      `- p-value: ${ma.p_value ?? 'N/A'}`,
+      `- Model: ${ma.model ?? 'N/A'}`,
+      '',
+      '## Heterogeneity',
+      `- I²: ${het.i_squared ?? 'N/A'}%`,
+      `- Q test p-value: ${het.q_p_value ?? 'N/A'}`,
+      `- Interpretation: ${het.interpretation ?? 'N/A'}`,
+      '',
+      '## Credibility Summary',
+      cred.summary ?? '_No credibility summary available._',
+      '',
+      '## Notes',
+      result.notes ?? '',
+      '',
+    ].join('\n')
+  }
+
+  // Download Markdown report
+  const handleDownloadMarkdown = () => {
+    if (!analysisResult) return
+    const md = buildMarkdownFromResult(analysisResult)
+    downloadBlob(
+      md,
+      `meta_analysis_${analysisId || 'report'}.md`,
+      'text/markdown'
+    )
   }
 
   return (
@@ -235,6 +340,7 @@ const MetaAnalysisNewPage: React.FC = () => {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
                 rows={3}
                 required
+                data-testid="research-question"
               />
             </div>
 
@@ -323,6 +429,51 @@ const MetaAnalysisNewPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Databases Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Databases to Search *
+              </label>
+              <select
+                multiple
+                value={formData.databases}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions, option => option.value)
+                  handleInputChange('databases', selected)
+                }}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
+                data-testid="database-select"
+                size={5}
+              >
+                <option value="PubMed">PubMed</option>
+                <option value="PsycINFO">PsycINFO</option>
+                <option value="Cochrane">Cochrane</option>
+                <option value="EMBASE">EMBASE</option>
+                <option value="CINAHL">CINAHL</option>
+                <option value="IEEE Xplore">IEEE Xplore</option>
+                <option value="ERIC">ERIC</option>
+                <option value="SPORTDiscus">SPORTDiscus</option>
+              </select>
+              <p className="text-sm text-gray-600 mt-1">Hold Ctrl/Cmd to select multiple databases</p>
+            </div>
+
+            {/* Minimum Studies */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Minimum Studies Required
+              </label>
+              <input
+                type="number"
+                value={minStudies}
+                onChange={(e) => setMinStudies(Number(e.target.value))}
+                min={2}
+                max={100}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
+                data-testid="min-studies"
+              />
+              <p className="text-sm text-gray-600 mt-1">Meta-analysis requires at least 3 studies</p>
+            </div>
+
             {/* Peer Review Only */}
             <div className="flex items-center gap-3">
               <input
@@ -359,6 +510,7 @@ const MetaAnalysisNewPage: React.FC = () => {
                 className="flex-1 px-6 py-4 bg-primary-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-glow-primary transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: isSubmitting ? 1 : 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
+                data-testid="run-meta-analysis"
               >
                 <span className="flex items-center justify-center gap-2">
                   {isSubmitting ? (
@@ -395,6 +547,74 @@ const MetaAnalysisNewPage: React.FC = () => {
               title="Running Meta-Analysis"
               onComplete={handleComplete}
             />
+
+            {/* Results Summary */}
+            {analysisResult && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 shadow-soft"
+                data-testid="results-summary"
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Status</p>
+                    <p className="text-lg font-semibold text-gray-900">{analysisResult.status}</p>
+                  </div>
+                  {analysisResult.meta_analysis && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Effect Size</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {analysisResult.meta_analysis.effect_size?.toFixed(3) ?? 'N/A'}
+                        {' '}(95% CI: {analysisResult.meta_analysis.ci_lower?.toFixed(3) ?? 'N/A'} to {' '}
+                        {analysisResult.meta_analysis.ci_upper?.toFixed(3) ?? 'N/A'})
+                      </p>
+                    </div>
+                  )}
+                  {analysisResult.heterogeneity && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Heterogeneity</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        I² = {analysisResult.heterogeneity.i_squared?.toFixed(1) ?? 'N/A'}%
+                        ({analysisResult.heterogeneity.interpretation ?? 'N/A'})
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Download Buttons */}
+                <div className="flex gap-4 mt-6">
+                  <motion.button
+                    onClick={handleDownloadJson}
+                    disabled={!analysisResult}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-glow-primary transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    data-testid="download-json"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileDown className="w-5 h-5" />
+                      Download JSON
+                    </span>
+                  </motion.button>
+
+                  <motion.button
+                    onClick={handleDownloadMarkdown}
+                    disabled={!analysisResult}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-glow-primary transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    data-testid="download-markdown"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Download Markdown
+                    </span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
 
             {/* Download Report Button */}
             {reportUrl && (

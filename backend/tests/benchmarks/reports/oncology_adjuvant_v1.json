@@ -1,0 +1,36 @@
+{
+  "benchmark_id": "oncology_adjuvant_v1",
+  "timestamp": "2025-11-25T21:37:35.854023",
+  "status": "success",
+  "meta_analysis": {
+    "effect_size": 0.768,
+    "ci_lower": 0.666,
+    "ci_upper": 0.854,
+    "p_value": 0.0001,
+    "model": "random"
+  },
+  "heterogeneity": {
+    "i_squared": 38.4,
+    "interpretation": "low"
+  },
+  "n_studies": 9,
+  "reference": {
+    "title": "Adjuvant Chemotherapy and Overall Survival in Breast Cancer: Based on published meta-analysis patterns",
+    "doi": "10.REFERENCE/SIMULATED",
+    "note": "This benchmark uses simulated data following realistic patterns from published oncology meta-analyses",
+    "effect_type": "hazard_ratio",
+    "expected_effect_model": "random",
+    "expected_effect_point": 0.75,
+    "expected_effect_ci": [
+      0.68,
+      0.84
+    ],
+    "expected_i2_range": [
+      35,
+      50
+    ],
+    "expected_p_value": 0.0001,
+    "expected_direction": "favors_treatment",
+    "expected_pooling_decision": "allow"
+  }
+}

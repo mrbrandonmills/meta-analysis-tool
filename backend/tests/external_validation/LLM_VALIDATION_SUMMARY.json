@@ -1,0 +1,5 @@
+{
+  "total_reports": 0,
+  "entries": [],
+  "instructions": "For each entry, open the listed report file, copy its full contents, and paste it together with the corresponding claude_prompt or gemini_prompt into the respective model. Save the model's critique separately if you want a full external review archive."
+}

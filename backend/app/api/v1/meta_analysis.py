@@ -462,6 +462,48 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/meta-analysis/agent-data/{analysis_id}")
+async def get_agent_execution_data(analysis_id: str, db: AsyncSession = Depends(get_db)):
+    """Get complete agent execution output data for detailed analysis verification."""
+    try:
+        from app.models.meta_analysis import AgentExecution
+        from sqlalchemy import select
+
+        # Get all agent executions
+        result = await db.execute(
+            select(AgentExecution)
+            .where(AgentExecution.meta_analysis_id == analysis_id)
+            .order_by(AgentExecution.created_at)
+        )
+        executions = result.scalars().all()
+
+        if not executions:
+            raise HTTPException(status_code=404, detail="No agent executions found")
+
+        agent_data = []
+        for execution in executions:
+            agent_data.append({
+                "agent_type": execution.agent_type,
+                "status": execution.status,
+                "started_at": execution.created_at.isoformat(),
+                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
+                "execution_time_ms": execution.execution_time_ms,
+                "output_data": execution.output_data,  # Full JSONB data
+                "error_message": execution.error_message
+            })
+
+        return {
+            "analysis_id": analysis_id,
+            "agent_executions": agent_data
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting agent execution data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/meta-analysis/audit/{analysis_id}")
 async def get_audit_trail(analysis_id: str):
     """Get the complete audit trail for a meta-analysis."""

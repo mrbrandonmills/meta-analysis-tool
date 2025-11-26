@@ -1,0 +1,36 @@
+{
+  "benchmark_id": "smoking_cessation_v1",
+  "timestamp": "2025-11-25T21:37:35.854219",
+  "status": "success",
+  "meta_analysis": {
+    "effect_size": 1.594,
+    "ci_lower": 1.42,
+    "ci_upper": 1.748,
+    "p_value": 0.0001,
+    "model": "random"
+  },
+  "heterogeneity": {
+    "i_squared": 60.3,
+    "interpretation": "moderate"
+  },
+  "n_studies": 10,
+  "reference": {
+    "title": "Nicotine Replacement Therapy and Smoking Cessation Rates: Based on published Cochrane review patterns",
+    "doi": "10.REFERENCE/SIMULATED",
+    "note": "This benchmark uses simulated data following realistic patterns from published smoking cessation meta-analyses",
+    "effect_type": "risk_ratio",
+    "expected_effect_model": "random",
+    "expected_effect_point": 1.58,
+    "expected_effect_ci": [
+      1.42,
+      1.76
+    ],
+    "expected_i2_range": [
+      48,
+      65
+    ],
+    "expected_p_value": 0.0001,
+    "expected_direction": "favors_treatment",
+    "expected_pooling_decision": "allow"
+  }
+}
