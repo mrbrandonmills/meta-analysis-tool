@@ -463,7 +463,7 @@ async def get_status(analysis_id: str, db: AsyncSession = Depends(get_async_db))
 
 
 @router.get("/meta-analysis/agent-data/{analysis_id}")
-async def get_agent_execution_data(analysis_id: str, db: AsyncSession = Depends(get_db)):
+async def get_agent_execution_data(analysis_id: str, db: AsyncSession = Depends(get_async_db)):
     """Get complete agent execution output data for detailed analysis verification."""
     try:
         from app.models.meta_analysis import AgentExecution

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
-from app.core.database import get_db
+from app.db.session import get_async_db
 from app.models.api_keys import DatabaseProvider
 from app.models.user import User
 from app.services.api_key_service import api_key_service
@@ -76,7 +76,7 @@ class DatabaseInfoResponse(BaseModel):
 async def add_api_key(
     request: AddAPIKeyRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Add a new API key for a subscription database.
 
@@ -116,7 +116,7 @@ async def add_api_key(
 @router.get("/api-keys/list", response_model=APIKeyListResponse)
 async def list_api_keys(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """List all API keys for the current user.
 
@@ -139,7 +139,7 @@ async def list_api_keys(
 async def delete_api_key(
     key_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Delete an API key.
 
@@ -168,7 +168,7 @@ async def delete_api_key(
 async def verify_api_key(
     key_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Verify that an API key works.
 
@@ -338,7 +338,7 @@ async def get_database_info():
 @router.get("/databases/available")
 async def get_available_databases(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Get list of databases available to the current user.
 
