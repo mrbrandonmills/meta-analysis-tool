@@ -1,8 +1,8 @@
 # AI-Powered Meta-Analysis Platform
 
-**Version:** 1.0.0 (Beta)
-**Last Updated:** November 25, 2025
-**Status:** Production-Ready for University Beta Testing
+**Version:** 1.0.1 (Beta)
+**Last Updated:** November 26, 2025
+**Status:** Production-Ready with Railway Backend + Vercel Frontend
 
 ---
 
@@ -22,13 +22,15 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 
 ### ✅ Production Features (Deployed)
 - **8 FREE databases** integrated (1.04 billion papers)
-- **3-agent AI workflow** (Search → Screen → Credibility)
+- **6-agent AI workflow** (Coordinator → Search → Screening → Full-text → QA → Credibility)
 - **4-level quality rating** (HIGH/MEDIUM/LOW/VERY LOW)
 - **Real data only** (NO simulated content - medical-grade verification)
 - **Abstract fetching** from PubMed (critical bug fixed)
 - **Database deduplication** across sources
 - **REST API** fully functional
-- **Deployed on Railway** (production environment)
+- **Backend deployed on Railway** (production environment)
+- **Frontend deployed on Vercel** (Next.js + React)
+- **E2E testing infrastructure** (Playwright tests ready)
 
 ### ⏳ Code Complete (Awaiting Deployment)
 - **BYOK system** (Bring Your Own API Key)
@@ -38,7 +40,6 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 - **Usage analytics** tracking
 
 ### 📋 Designed (Implementation Ready)
-- **Frontend UI** (React/Next.js - full mockups complete)
 - **User authentication** (JWT-based)
 - **Geographic filtering** (by country, state, institution)
 - **Institution type filtering** (university vs industry)
@@ -48,13 +49,39 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 
 ## 🏗️ Architecture
 
+### Deployment Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    USER'S BROWSER                           │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+         ┌───────────┴───────────┐
+         │                       │
+         ▼                       ▼
+┌────────────────┐      ┌────────────────┐
+│   VERCEL       │      │   RAILWAY      │
+│   (Frontend)   │─────▶│   (Backend)    │
+│                │      │                │
+│ Next.js App    │ API  │ FastAPI App    │
+│ React UI       │ Calls│ Python API     │
+│ Static Assets  │      │ PostgreSQL DB  │
+└────────────────┘      └────────────────┘
+```
+
+**Frontend:** https://frontend-4hognfvwt-brandons-projects-c4dfa14a.vercel.app
+**Backend API:** https://meta-analysis-tool-production.up.railway.app
+**API Health:** https://meta-analysis-tool-production.up.railway.app/api/v1/health
+
 ### Tech Stack
-- **Backend:** Python FastAPI
-- **Database:** PostgreSQL (with async SQLAlchemy)
+- **Backend:** Python 3.11 + FastAPI 0.115.0
+- **Database:** PostgreSQL (with async SQLAlchemy + asyncpg)
 - **AI:** Claude 3.5 Sonnet (Anthropic API)
-- **Deployment:** Railway (production)
-- **Frontend:** Next.js + React (planned)
-- **Auth:** JWT tokens (planned)
+- **Backend Deployment:** Railway (auto-deploy from GitHub)
+- **Frontend:** Next.js 15 + React + TypeScript
+- **Frontend Deployment:** Vercel
+- **Testing:** Playwright (E2E), pytest (backend)
+- **Auth:** JWT tokens (in development)
 
 ### Agent Architecture
 
@@ -64,17 +91,16 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 │  (Orchestrates entire workflow)         │
 └──────────────┬──────────────────────────┘
                │
-    ┌──────────┴──────────┬───────────────┐
-    │                     │               │
-┌───▼────┐         ┌──────▼───┐   ┌──────▼─────┐
-│ Search │         │ Screening│   │ Credibility│
-│ Agent  │────────▶│  Agent   │──▶│   Agent    │
-└────────┘         └──────────┘   └────────────┘
-    │                   │               │
-    │                   │               │
-    ▼                   ▼               ▼
-[14 DBs]           [Inclusion/     [4 Quality
-1.64B papers        Exclusion]      Levels]
+    ┌──────────┴───────┬──────────┬──────────┬──────────┐
+    │                  │          │          │          │
+┌───▼────┐      ┌──────▼───┐  ┌──▼────┐ ┌───▼───┐ ┌───▼────┐
+│ Search │      │ Screening│  │ Full  │ │  QA   │ │Credib  │
+│ Agent  │─────▶│  Agent   │─▶│ Text  │─▶│ Agent │─▶│ ility  │
+└────────┘      └──────────┘  └───────┘ └───────┘ └────────┘
+    │                │            │         │          │
+    ▼                ▼            ▼         ▼          ▼
+[14 DBs]      [Inclusion/   [PDF       [Quality   [4 Levels
+1.64B papers   Exclusion]    Analysis]   Check]    HIGH-LOW]
 ```
 
 ---
@@ -113,7 +139,17 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 
 ## 🤖 AI Agents
 
-### 1. SearchAgent (`app/agents/specialized/search.py`)
+### 1. CoordinatorAgent (`app/agents/specialized/coordinator.py`)
+**Purpose:** Orchestrate the entire meta-analysis workflow
+
+**Features:**
+- Manages workflow state
+- Coordinates between agents
+- Handles error recovery
+- Tracks progress
+- Provides status updates
+
+### 2. SearchAgent (`app/agents/specialized/search.py`)
 **Purpose:** Automatically search all selected databases
 
 **Features:**
@@ -125,7 +161,7 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 
 **Recent Fix:** Abstract fetching from PubMed (app/agents/specialized/search.py:234-289)
 
-### 2. ScreeningAgent (`app/agents/specialized/screening.py`)
+### 3. ScreeningAgent (`app/agents/specialized/screening.py`)
 **Purpose:** Screen studies against inclusion/exclusion criteria
 
 **Features:**
@@ -137,7 +173,25 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 
 **Critical:** Requires abstracts (dependency on SearchAgent)
 
-### 3. CredibilityAgent (`app/agents/specialized/credibility.py`)
+### 4. FullTextScreeningAgent (`app/agents/specialized/full_text_screening.py`)
+**Purpose:** Full-text analysis for included studies
+
+**Features:**
+- PDF download and text extraction
+- Deep content analysis
+- Final inclusion/exclusion decisions
+- Detailed reasoning for each study
+
+### 5. QAAgent (`app/agents/specialized/qa.py`)
+**Purpose:** Quality assessment of included studies
+
+**Features:**
+- Study design evaluation
+- Methodological quality assessment
+- Risk of bias analysis
+- Statistical power evaluation
+
+### 6. CredibilityAgent (`app/agents/specialized/credibility.py`)
 **Purpose:** Rate study quality and replicability
 
 **Features:**
@@ -175,49 +229,77 @@ An **AI-powered platform** that automates systematic literature reviews and meta
 ## 📁 Project Structure
 
 ```
-meta-analysis-tool/
+meta-analysis-tool/  (MASTER - Single Source of Truth)
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
 │   │   │   ├── base.py                     # Base agent class
 │   │   │   ├── specialized/
+│   │   │   │   ├── coordinator.py         # CoordinatorAgent
 │   │   │   │   ├── search.py              # SearchAgent (✅ Fixed)
 │   │   │   │   ├── screening.py           # ScreeningAgent
-│   │   │   │   ├── credibility.py         # CredibilityAgent
-│   │   │   │   └── coordinator.py         # CoordinatorAgent
+│   │   │   │   ├── full_text_screening.py # FullTextScreeningAgent
+│   │   │   │   ├── qa.py                  # QAAgent
+│   │   │   │   └── credibility.py         # CredibilityAgent
 │   │   ├── api/
 │   │   │   └── v1/
-│   │   │       ├── meta_analysis.py       # Main API endpoints
-│   │   │       └── api_keys.py            # BYOK endpoints (🔧 Ready)
+│   │   │       ├── meta_analysis.py       # Main API endpoints (✅ Fixed)
+│   │   │       ├── api_keys.py            # BYOK endpoints (✅ Fixed)
+│   │   │       ├── reports.py             # Report generation
+│   │   │       ├── progress.py            # Progress tracking
+│   │   │       └── health.py              # Health checks
 │   │   ├── models/
 │   │   │   ├── meta_analysis.py           # Meta-analysis models
 │   │   │   ├── user.py                    # User models
-│   │   │   ├── api_keys.py                # BYOK models (🔧 Ready)
+│   │   │   ├── api_keys.py                # BYOK models
 │   │   │   └── paper.py                   # Paper models
 │   │   ├── services/
 │   │   │   ├── meta_analysis_service.py   # Business logic
-│   │   │   └── api_key_service.py         # BYOK service (🔧 Ready)
-│   │   └── core/
-│   │       ├── config.py                  # Configuration
-│   │       ├── database.py                # DB connection
-│   │       └── auth.py                    # Authentication (🔧 Needs update)
+│   │   │   └── api_key_service.py         # BYOK service
+│   │   ├── db/
+│   │   │   ├── session.py                 # Async DB sessions
+│   │   │   └── base.py                    # DB base classes
+│   │   ├── core/
+│   │   │   ├── config.py                  # Configuration
+│   │   │   └── auth.py                    # Authentication
+│   │   └── main.py                        # FastAPI app entry point
+│   ├── tests/
+│   │   ├── benchmarks/                    # 5 real-world datasets
+│   │   │   └── datasets/
+│   │   └── external_validation/           # 4 validation scripts
 │   ├── alembic/                           # Database migrations
-│   ├── tests/                             # Test suite
-│   └── main.py                            # FastAPI app entry point
-├── frontend/ (📋 Planned)
-│   └── [Next.js app structure]
-└── docs/                                  # Documentation
-    ├── API_KEY_ACQUISITION_GUIDE.md       # How to get API keys
-    ├── BYOK_SYSTEM_COMPLETE.md            # BYOK documentation
-    ├── COMPETITIVE_ANALYSIS_ONE_PAGER.md  # 1-pager for partners
-    ├── DATA_INTEGRITY_VERIFICATION_REPORT.md # Data integrity proof
-    ├── DATABASE_COVERAGE.md               # Database details
-    ├── DEEP_COMPETITIVE_ANALYSIS.md       # Competitive strategy
-    ├── FEATURES_SUMMARY_NOV_25.md         # Feature summary
-    ├── PRODUCTION_READINESS_PLAN.md       # Beta launch plan
-    ├── TESTING_CHECKLIST.md               # Testing guide
-    └── VALIDITY_RANKING_AND_FILTERING_SYSTEM.md # Ranking system
+│   ├── Dockerfile                         # Railway deployment
+│   └── requirements.txt                   # Python dependencies
+├── frontend/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   └── tools/meta-analysis/
+│   │   │       └── new.tsx                # Meta-analysis form (7 data-testid)
+│   │   ├── components/                    # React components
+│   │   └── lib/                           # Utilities
+│   ├── tests/
+│   │   └── e2e/                           # Playwright E2E tests
+│   │       ├── smoke_test.spec.ts         # Quick validation
+│   │       └── meta_frontend_e2e.spec.ts  # Full test suite
+│   ├── playwright.config.ts               # E2E test config
+│   ├── package.json                       # Dependencies
+│   ├── vercel.json                        # Vercel deployment
+│   └── .vercel/                           # Vercel project config
+├── docs/                                  # Documentation
+│   ├── API_KEY_ACQUISITION_GUIDE.md
+│   ├── BYOK_SYSTEM_COMPLETE.md
+│   ├── DEPLOYMENT_ARCHITECTURE.md         # ← NEW: Railway + Vercel
+│   ├── RAILWAY_FIX_SUMMARY.md             # ← NEW: Import fixes
+│   └── [... 15+ other docs]
+├── CLAUDE.md                              # ← This file
+├── railway.json                           # Railway backend config
+└── railway.toml                           # Railway settings
 ```
+
+### Archive Location
+Old consolidated projects backed up at:
+- `/Volumes/Super Mastery/archive/meta-analysis-tool-OLD-20251126/`
+- `/Volumes/Super Mastery/archive/meta-analysis-tool-fresh-20251126/`
 
 ---
 
@@ -267,6 +349,18 @@ GET /api/v1/meta-analysis/status/{analysis_id}
 }
 ```
 
+**Health Check:**
+```bash
+GET /api/v1/health
+
+→ Returns: {
+  "status": "healthy",
+  "timestamp": "2025-11-27T00:18:33.117486",
+  "service": "meta-analysis-platform",
+  "version": "0.1.0"
+}
+```
+
 ### BYOK System (🔧 Ready for Deployment)
 
 **Add API Key:**
@@ -290,19 +384,216 @@ Authorization: Bearer USER_TOKEN
 → Returns metadata only (never exposes actual keys)
 ```
 
-**Delete Key:**
+---
+
+## 🧪 Testing Infrastructure
+
+### Backend Tests
+**Location:** `backend/tests/`
+
+**Benchmarks:**
+- 5 real-world datasets in `tests/benchmarks/datasets/`
+- Automated test suite: `test_meta_analysis_benchmarks.py`
+
+**External Validation:**
+- 4 validation scripts in `tests/external_validation/`
+- Numeric validation, LLM validation, full rollup
+
+**Run Tests:**
 ```bash
-DELETE /api-keys/delete/{key_id}
-Authorization: Bearer USER_TOKEN
+cd backend
+pytest tests/
 ```
 
-**Get Available Databases:**
-```bash
-GET /databases/available
-Authorization: Bearer USER_TOKEN
+### Frontend E2E Tests
+**Location:** `frontend/tests/e2e/`
 
-→ Returns which databases user can access
+**Test Files:**
+- `smoke_test.spec.ts` - Quick validation test
+- `meta_frontend_e2e.spec.ts` - Full workflow test
+
+**Configuration:**
+- `playwright.config.ts` - Playwright settings
+- Tests require both frontend (localhost:3000) and backend API running
+
+**Run E2E Tests:**
+```bash
+cd frontend
+npx playwright test
 ```
+
+---
+
+## 🐛 Known Issues & Recent Fixes
+
+### ✅ FIXED: Railway Deployment (Nov 26, 2025)
+**Issue:** Backend crashing with `NameError: name 'get_db' is not defined`
+**Impact:** Railway deployment failing on startup
+**Root Cause:** FastAPI async endpoints using undefined `get_db` instead of `get_async_db`
+**Fix:**
+- Updated `backend/app/api/v1/meta_analysis.py:466`
+- Updated `backend/app/api/v1/api_keys.py` (5 occurrences)
+- Changed imports: `app.core.database.get_db` → `app.db.session.get_async_db`
+**File:** See `RAILWAY_FIX_SUMMARY.md` for details
+**Status:** ✅ Deployed & Railway auto-deploying
+**Reference:** https://docs.railway.app/guides/fastapi
+
+### ✅ FIXED: E2E Test TypeScript Imports (Nov 26, 2025)
+**Issue:** E2E tests had incorrect Node.js module imports
+**Impact:** Tests wouldn't compile
+**Fix:** Changed `import fs from 'fs'` → `import * as fs from 'fs'`
+**Files:** `smoke_test.spec.ts`, `meta_frontend_e2e.spec.ts`
+**Status:** ✅ Tests compile successfully
+
+### ✅ FIXED: Abstract Fetching Bug (Nov 25, 2025)
+**Issue:** SearchAgent wasn't fetching abstracts from PubMed
+**Impact:** ALL studies excluded (ScreeningAgent needs abstracts)
+**Fix:** Added PubMed `efetch.fcgi` API call with XML parsing
+**File:** `app/agents/specialized/search.py:234-289`
+**Status:** ✅ Deployed & Verified (test ID: bf35f7e9...)
+
+### ⏳ PENDING: User Authentication
+**Issue:** Currently uses dummy user for development
+**Impact:** Can't have multiple real users
+**Priority:** 🔴 CRITICAL for beta launch
+**Solution:** Implement JWT-based auth system
+
+### ⏳ PENDING: BYOK System Deployment
+**Issue:** Code complete but needs database migration
+**Impact:** Can't use subscription databases yet
+**Priority:** 🟡 HIGH (not blocking beta with 8 FREE databases)
+**Solution:** Create Alembic migration, add encryption key
+
+---
+
+## 🔧 Development Setup
+
+### Prerequisites
+- Python 3.11+
+- PostgreSQL 14+
+- Node.js 20+ (for frontend)
+- Railway CLI (for deployment)
+- Vercel CLI (for frontend deployment)
+- Anthropic API key (Claude)
+
+### Backend Setup
+```bash
+# Navigate to project
+cd /Volumes/Super\ Mastery/meta-analysis-tool/backend
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run database migrations
+alembic upgrade head
+
+# Start development server
+uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend Setup
+```bash
+# Navigate to frontend
+cd /Volumes/Super\ Mastery/meta-analysis-tool/frontend
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+# Create .env.local with:
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Start development server
+npm run dev
+```
+
+### Environment Variables Required
+
+**Backend (.env):**
+```bash
+# Database
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/metaanalysis
+
+# AI
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...  # Optional
+
+# BYOK (when deployed)
+API_KEY_ENCRYPTION_KEY=<fernet-key>
+
+# Optional: Platform-wide keys
+SERPAPI_KEY=<serpapi-key>  # For Google Scholar
+SCOPUS_API_KEY=<scopus-key>
+```
+
+**Frontend (.env.local):**
+```bash
+NEXT_PUBLIC_API_URL=https://meta-analysis-tool-production.up.railway.app
+```
+
+### Running Tests
+```bash
+# Backend tests
+cd backend
+pytest tests/
+
+# Frontend E2E tests (requires both servers running)
+cd frontend
+npx playwright test
+
+# Compile check
+cd backend
+python3 -m py_compile app/main.py
+```
+
+---
+
+## 🚀 Deployment
+
+### Backend (Railway)
+
+**Automatic Deployment:**
+Railway automatically deploys when you push to `main` branch:
+
+```bash
+git push origin main
+# Railway detects changes in backend/** and rebuilds
+```
+
+**Manual Deployment:**
+```bash
+railway up
+```
+
+**Configuration Files:**
+- `railway.json` - Build and deploy settings
+- `railway.toml` - Resource limits and health checks
+- `backend/Dockerfile` - Container definition
+
+**Health Check:**
+Railway monitors: `/api/v1/health` (300s timeout)
+
+### Frontend (Vercel)
+
+**Manual Deployment:**
+```bash
+cd frontend
+npx vercel --prod
+```
+
+**Auto-deployment:** Not currently configured (requires GitHub integration)
+
+**Configuration Files:**
+- `vercel.json` - Build settings
+- `frontend/.vercel/project.json` - Project config
 
 ---
 
@@ -395,91 +686,6 @@ Validate AI accuracy with real-world usage by 100-500 students over 3-6 months
 
 ---
 
-## 🐛 Known Issues & Fixes
-
-### ✅ FIXED: Abstract Fetching Bug
-**Issue:** SearchAgent wasn't fetching abstracts from PubMed
-**Impact:** ALL studies excluded (ScreeningAgent needs abstracts)
-**Fix:** Added PubMed `efetch.fcgi` API call with XML parsing
-**File:** `app/agents/specialized/search.py:234-289`
-**Status:** ✅ Deployed & Verified (test ID: bf35f7e9...)
-
-### ⏳ PENDING: User Authentication
-**Issue:** Currently uses dummy user for development
-**Impact:** Can't have multiple real users
-**Priority:** 🔴 CRITICAL for beta launch
-**Solution:** Implement JWT-based auth system
-
-### ⏳ PENDING: Frontend UI
-**Issue:** No user interface (API only)
-**Impact:** Can't onboard students without UI
-**Priority:** 🔴 CRITICAL for beta launch
-**Solution:** Build Next.js frontend (mockups complete)
-
-### ⏳ PENDING: BYOK System Deployment
-**Issue:** Code complete but needs database migration
-**Impact:** Can't use subscription databases yet
-**Priority:** 🟡 HIGH (not blocking beta with 8 FREE databases)
-**Solution:** Create Alembic migration, add encryption key
-
----
-
-## 🔧 Development Setup
-
-### Prerequisites
-- Python 3.11+
-- PostgreSQL 14+
-- Railway CLI (for deployment)
-- Anthropic API key (Claude)
-
-### Local Setup
-```bash
-# Clone repository
-cd /Volumes/Super\ Mastery/meta-analysis-tool
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-cd backend
-pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys
-
-# Run database migrations
-alembic upgrade head
-
-# Start development server
-uvicorn main:app --reload --port 8000
-```
-
-### Environment Variables Required
-```bash
-# Database
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/metaanalysis
-
-# AI
-ANTHROPIC_API_KEY=sk-ant-...
-
-# BYOK (when deployed)
-API_KEY_ENCRYPTION_KEY=<fernet-key>
-
-# Optional: Platform-wide keys
-SERPAPI_KEY=<serpapi-key>  # For Google Scholar
-SCOPUS_API_KEY=<scopus-key>
-```
-
-### Running Tests
-```bash
-cd backend
-pytest tests/
-```
-
----
-
 ## 📝 Critical TODO Before Beta Launch
 
 ### Week 1: Authentication & Stability
@@ -491,14 +697,13 @@ pytest tests/
 - [ ] Comprehensive error logging
 - [ ] Automatic retry for failed analyses
 
-### Week 2: Frontend Development
-- [ ] Set up Next.js project
-- [ ] Build login/signup pages
-- [ ] Create dashboard (list of meta-analyses)
-- [ ] Build "Create New Analysis" form
-- [ ] Progress tracking page
-- [ ] Results viewing page
-- [ ] Export functionality (CSV, PDF)
+### Week 2: Frontend Polish
+- [ ] Update Vercel deployment with latest changes
+- [ ] Test E2E suite with live servers
+- [ ] Build user dashboard
+- [ ] Create results viewing page
+- [ ] Add export functionality (CSV, PDF)
+- [ ] Mobile responsiveness
 
 ### Week 3: Testing & Deployment
 - [ ] Run 20 diverse test meta-analyses
@@ -506,7 +711,7 @@ pytest tests/
 - [ ] Check credibility ratings are reasonable
 - [ ] Stress test (10 simultaneous analyses)
 - [ ] Fix any critical bugs found
-- [ ] Deploy frontend to Vercel/Railway
+- [ ] Deploy all fixes to production
 
 ### Week 4: Beta Program Setup
 - [ ] Create professor outreach email template
@@ -547,20 +752,21 @@ pytest tests/
 - Average API response time
 - Failed analyses rate (target: <5%)
 - Database API failures
+- Railway deployment success rate
 
 ---
 
 ## 🎯 Next Steps
 
 **IMMEDIATE (This Week):**
-1. Read PRODUCTION_READINESS_PLAN.md for detailed roadmap
-2. Prioritize: Authentication OR Frontend first
-3. Set sprint goals for next 2 weeks
-4. Start outreach to university professors
+1. Monitor Railway deployment after recent fixes
+2. Test E2E suite with production backend
+3. Update Vercel frontend deployment
+4. Verify full workflow end-to-end
 
 **SHORT-TERM (Next Month):**
 1. Complete authentication system
-2. Build minimal frontend (5 key pages)
+2. Polish frontend UI
 3. Run comprehensive testing
 4. Launch beta with 1-2 universities
 
@@ -581,8 +787,9 @@ pytest tests/
 
 ## 📚 Documentation Index
 
-All documentation is in `/backend/`:
+All documentation is in `/Volumes/Super Mastery/meta-analysis-tool/`:
 
+### Backend Documentation (`backend/`)
 1. **API_KEY_ACQUISITION_GUIDE.md** - How to get API keys for 6 subscription databases
 2. **BYOK_SYSTEM_COMPLETE.md** - BYOK system documentation (1.64B papers)
 3. **COMPETITIVE_ANALYSIS_ONE_PAGER.md** - 1-page pitch for partners/professors
@@ -597,6 +804,15 @@ All documentation is in `/backend/`:
 12. **TESTING_CHECKLIST.md** - Testing guide before beta launch
 13. **VALIDITY_RANKING_AND_FILTERING_SYSTEM.md** - Credibility ranking system
 
+### Root Documentation
+14. **DEPLOYMENT_ARCHITECTURE.md** - Railway + Vercel architecture explained
+15. **RAILWAY_FIX_SUMMARY.md** - Recent import fixes for Railway deployment
+16. **MASTER_VERIFICATION_COMPLETE.md** - Project consolidation report
+17. **PROJECT_CONSOLIDATION_COMPLETE.md** - Consolidation details
+18. **ARCHIVING_COMPLETE.md** - Archive status of old projects
+19. **E2E_VALIDATION_FINAL_STATUS.md** - E2E test validation
+20. **E2E_INTEGRATION_GUIDE.md** - E2E testing guide
+
 ---
 
 ## 🤝 Contributing
@@ -608,6 +824,8 @@ When working on this project:
 3. **Follow existing patterns** in agent architecture
 4. **Write tests** for new features
 5. **Document** new APIs in this file
+6. **Check Railway logs** for deployment issues
+7. **Use `get_async_db`** for FastAPI async endpoints (NOT `get_db`)
 
 ### For Human Developers
 1. Read PRODUCTION_READINESS_PLAN.md for roadmap
@@ -615,15 +833,22 @@ When working on this project:
 3. Use async/await for I/O operations
 4. Write docstrings for all public functions
 5. Add tests for new features
+6. Test locally before pushing (Railway auto-deploys!)
+
+### Common Pitfalls to Avoid
+❌ Using `Depends(get_db)` in async endpoints → Use `Depends(get_async_db)`
+❌ Importing from `app.core.database` → Import from `app.db.session`
+❌ Forgetting to compile check → Run `python3 -m py_compile` before pushing
+❌ Not testing E2E → Run Playwright tests after frontend changes
 
 ---
 
 ## 📞 Contact & Support
 
-**Project Owner:** [Your Name]
-**Email:** [Your Email]
-**Platform URL:** https://meta-analysis-tool-production.up.railway.app (API only)
-**GitHub:** [Your GitHub URL]
+**Project Location:** `/Volumes/Super Mastery/meta-analysis-tool`
+**Backend API:** https://meta-analysis-tool-production.up.railway.app
+**Frontend:** https://frontend-4hognfvwt-brandons-projects-c4dfa14a.vercel.app
+**GitHub:** https://github.com/mrbrandonmills/meta-analysis-tool
 
 **For Beta Partnership Inquiries:**
 - Read COMPETITIVE_ANALYSIS_ONE_PAGER.md
@@ -641,16 +866,17 @@ When working on this project:
 ## 🎉 Acknowledgments
 
 - **Anthropic Claude** - AI agent intelligence
-- **Railway** - Production deployment
+- **Railway** - Backend production deployment
+- **Vercel** - Frontend hosting
 - **PubMed/NIH** - Free biomedical database access
 - **Academic Open Access Community** - Free database APIs
 - **University Partners** - Beta testing (pending)
 
 ---
 
-**Version:** 1.0.0
-**Last Updated:** November 25, 2025
-**Status:** Production-Ready for Beta Testing
+**Version:** 1.0.1
+**Last Updated:** November 26, 2025
+**Status:** Production-Ready with Railway Backend + Vercel Frontend
 **Coverage:** 1.64 Billion Research Papers Across 14 Databases
 **Mission:** Democratize systematic review automation with AI
 
